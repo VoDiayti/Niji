@@ -1,0 +1,38 @@
+import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+
+// Host ảnh ngoài được phép dùng với next/image: bucket R2 công khai (R2_PUBLIC_URL) + IMAGE_REMOTE_HOSTS=a.com,b.com
+function hostOf(url?: string): string | undefined {
+  try {
+    return url ? new URL(url).hostname : undefined;
+  } catch {
+    return undefined;
+  }
+}
+const remoteHosts = [hostOf(process.env.R2_PUBLIC_URL), ...(process.env.IMAGE_REMOTE_HOSTS ?? "").split(",").map((h) => h.trim())]
+  .filter((h): h is string => Boolean(h))
+  .map((hostname) => ({ protocol: "https" as const, hostname }));
+
+const nextConfig: NextConfig = {
+  // Không đưa các gói chỉ dùng lúc dev/CLI vào bản build cho Worker. Turbopack quét mọi file .wasm
+  // trong các gói được trace, nếu không loại trừ thì Prisma CLI, pglite, @vercel/og... làm Worker phình thêm ~15 MiB.
+  outputFileTracingExcludes: {
+    "*": [
+      "./node_modules/prisma/**",
+      "./node_modules/@prisma/dev/**",
+      "./node_modules/@prisma/schema-engine-wasm/**",
+      "./node_modules/@electric-sql/**",
+      "./node_modules/blake3-wasm/**",
+      "./node_modules/next/dist/compiled/@vercel/og/**",
+    ],
+  },
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }, { protocol: "https", hostname: "**.r2.dev" }, ...remoteHosts],
+    qualities: [60, 75, 90],
+  },
+};
+
+export default nextConfig;
+
+// Cho phép dùng binding Cloudflare (D1, R2, rate limiter...) ngay khi chạy `next dev`
+initOpenNextCloudflareForDev();

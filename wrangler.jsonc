@@ -1,0 +1,58 @@
+{
+  // Cấu hình Cloudflare Worker cho website (OpenNext). Tài liệu: https://opennext.js.org/cloudflare
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "niji-xkld",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "niji-xkld"
+    }
+  ],
+  // Database D1 (SQLite). Tạo bằng: npx wrangler d1 create niji-xkld → dán database_id vào đây.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "niji-xkld",
+      "database_id": "a514a0c0-7d96-472e-8983-e2cf79e14625",
+      "migrations_dir": "migrations",
+      // true: `npm run dev` / `npm run preview` dùng D1 THẬT trên Cloudflare (cần `npx wrangler login`,
+      // đã chạy `npm run db:migrate:remote` + `npm run db:seed:remote`). false: dùng bản giả lập trong .wrangler/state.
+      "remote": true
+    }
+  ],
+  // Bucket R2 chứa ảnh upload. Tạo bằng: npx wrangler r2 bucket create niji-xkld-media
+  "r2_buckets": [
+    {
+      "binding": "R2_BUCKET",
+      "bucket_name": "pd-imgs",
+      // true: upload ảnh vào bucket R2 THẬT khi chạy local (đồng bộ với R2_PUBLIC_URL trong .dev.vars)
+      "remote": true
+    }
+  ],
+  // Tối ưu ảnh cho next/image bằng Cloudflare Images
+  "images": {
+    "binding": "IMAGES"
+  },
+  // Giới hạn gửi form công khai: 5 lần / 60 giây cho mỗi IP (tính theo từng PoP của Cloudflare)
+  "ratelimits": [
+    {
+      "name": "LEAD_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ],
+  // Biến môi trường không bí mật của Worker (bí mật như AUTH_SECRET đặt bằng `wrangler secret put`)
+  "vars": {
+    "R2_PUBLIC_URL": "https://pub-2e3adbbd2d98438786c5e3f525507a41.r2.dev"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

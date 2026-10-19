@@ -1,0 +1,14 @@
+# Copy thành .dev.vars (file này được commit, .dev.vars thì không).
+# Dùng cho runtime Workers khi chạy local: `npm run preview` (và binding giả lập trong `next dev`).
+NEXTJS_ENV=development
+
+# Giống AUTH_SECRET trong .env. Production: npx wrangler secret put AUTH_SECRET
+AUTH_SECRET=thay-bang-chuoi-ngau-nhien
+AUTH_TRUST_HOST=true
+
+# Chỉ dùng cho preview local chạy HTTP (http://localhost:8787). Production dùng HTTPS nên KHÔNG đặt AUTH_URL.
+AUTH_URL=http://localhost:8787
+
+# Khi chạy local với R2 GIẢ LẬP (remote: false) phải để trống để ảnh được phục vụ qua /api/media/...
+# Khi bật remote: true cho R2_BUCKET thì điền URL công khai thật, vd https://pub-xxxx.r2.dev
+R2_PUBLIC_URL=
