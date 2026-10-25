@@ -36,7 +36,7 @@ export function NewsSidebar({ categories, featured, activeCategorySlug, query, h
       {categories.length > 0 && (
         <div className="rounded-2xl border bg-card p-4 shadow-sm">
           <h3 className="mb-3 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-brand-dark">
-            <Folder className="size-4 text-cta" /> Chuyên mục
+            <Folder className="size-4 text-primary" /> Chuyên mục
           </h3>
           <ul className="divide-y">
             <li>
@@ -62,7 +62,7 @@ export function NewsSidebar({ categories, featured, activeCategorySlug, query, h
       {featured.length > 0 && (
         <div className="rounded-2xl border bg-card p-4 shadow-sm">
           <h3 className="mb-3 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-brand-dark">
-            <Star className="size-4 text-cta" /> Bài nổi bật
+            <Star className="size-4 text-primary" /> Bài nổi bật
           </h3>
           <div className="space-y-4">
             {featured.map((p) => (

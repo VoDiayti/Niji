@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { asc, count, eq } from "drizzle-orm";
-import { db, jobOrders, leads, markets } from "@/db";
+import { db, jobOrders, jobPrograms, leads, markets } from "@/db";
 import { formatDateTime } from "@/lib/format";
 import { PageHeader } from "@/components/admin/page-header";
 import { JobForm } from "@/components/admin/jobs/job-form";
@@ -14,11 +14,13 @@ export const dynamic = "force-dynamic";
 
 export default async function EditJobPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [job, [{ leadCount }], marketOptions, industryRows] = await Promise.all([
+  const [job, [{ leadCount }], marketOptions, industryRows, programOptions] = await Promise.all([
     db.query.jobOrders.findFirst({ where: eq(jobOrders.id, id) }),
     db.select({ leadCount: count() }).from(leads).where(eq(leads.jobOrderId, id)),
     db.select({ id: markets.id, name: markets.name }).from(markets).orderBy(asc(markets.order), asc(markets.name)),
     db.selectDistinct({ industry: jobOrders.industry }).from(jobOrders).orderBy(asc(jobOrders.industry)),
+    // Kể cả chương trình đang ẩn (form đánh dấu "(ẩn)")
+    db.query.jobPrograms.findMany({ orderBy: [asc(jobPrograms.order), asc(jobPrograms.name)], columns: { id: true, name: true, isActive: true } }),
   ]);
   if (!job) notFound();
 
@@ -43,7 +45,7 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
           </>
         }
       />
-      <JobForm initialData={job} markets={marketOptions} industries={industryRows.map((r) => r.industry)} />
+      <JobForm initialData={job} markets={marketOptions} industries={industryRows.map((r) => r.industry)} programs={programOptions} />
     </>
   );
 }

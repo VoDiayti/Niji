@@ -46,6 +46,8 @@ function toData(v: SettingsFormValues) {
     metaTitle: v.metaTitle || null,
     metaDescription: v.metaDescription || null,
     ogImage: v.ogImage || null,
+    jobTableTitle: v.jobTableTitle || null,
+    jobTableEnabled: v.jobTableEnabled,
   };
 }
 

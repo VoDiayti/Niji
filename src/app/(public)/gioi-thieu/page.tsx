@@ -74,7 +74,7 @@ export default async function AboutPage() {
               <dl className="mt-8 grid grid-cols-3 gap-3">
                 {stats.map((x) => (
                   <div key={x.label} className="rounded-2xl border bg-card p-4 text-center">
-                    <x.Icon className="mx-auto size-5 text-cta" />
+                    <x.Icon className="mx-auto size-5 text-primary" />
                     <dd className="mt-2 text-2xl font-extrabold text-brand-dark md:text-3xl">{formatNumber(x.value)}+</dd>
                     <dt className="mt-0.5 text-xs text-muted-foreground md:text-sm">{x.label}</dt>
                   </div>

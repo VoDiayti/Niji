@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +11,7 @@ import { settingsSchema, type SettingsFormValues } from "@/lib/validations/setti
 import { updateSettings } from "@/actions/settings";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubmitButton } from "@/components/admin/submit-button";
@@ -26,6 +28,7 @@ const TABS: { value: string; label: string; fields: FieldName[] }[] = [
   { value: "contact", label: "Liên hệ", fields: ["hotline", "zalo", "email", "address", "mapEmbedUrl", "workingHours"] },
   { value: "social", label: "Mạng xã hội", fields: ["facebook", "youtube", "tiktok", "messenger"] },
   { value: "stats", label: "Số liệu nổi bật", fields: ["statWorkers", "statYears", "statPartners", "statMarkets"] },
+  { value: "home", label: "Trang chủ", fields: ["jobTableEnabled", "jobTableTitle"] },
   { value: "about", label: "Giới thiệu", fields: ["aboutShort", "aboutContent", "vision", "mission"] },
   { value: "seo", label: "SEO", fields: ["metaTitle", "metaDescription", "ogImage"] },
 ];
@@ -69,6 +72,8 @@ export function SettingsForm({ initialData }: { initialData: Setting }) {
       metaTitle: str(initialData.metaTitle),
       metaDescription: str(initialData.metaDescription),
       ogImage: initialData.ogImage ?? null,
+      jobTableTitle: str(initialData.jobTableTitle),
+      jobTableEnabled: initialData.jobTableEnabled,
     },
   });
 
@@ -227,6 +232,44 @@ export function SettingsForm({ initialData }: { initialData: Setting }) {
                 <TextField control={form.control} name="statYears" label="Năm kinh nghiệm" inputMode="numeric" placeholder="14" />
                 <TextField control={form.control} name="statPartners" label="Đối tác tiếp nhận" inputMode="numeric" placeholder="120" />
                 <TextField control={form.control} name="statMarkets" label="Thị trường" inputMode="numeric" placeholder="6" />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Trang chủ */}
+          <TabsContent value="home">
+            <Card>
+              <CardHeader>
+                <CardTitle>Bảng đơn hàng theo chương trình</CardTitle>
+                <CardDescription>
+                  Khối bảng đơn hàng chia tab theo chương trình (Thực tập sinh, Kỹ năng đặc định...) nằm ngay dưới banner trang chủ.
+                  Quản lý các tab trong mục <Link href="/admin/chuong-trinh" className="font-medium underline underline-offset-4">Chương trình</Link>; đơn hàng cần được gắn chương trình để hiện trong bảng.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="jobTableEnabled"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between gap-4 rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel>Hiện bảng đơn hàng theo chương trình ở trang chủ</FormLabel>
+                        <FormDescription>Tắt để ẩn toàn bộ khối này mà không cần xóa chương trình.</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="Hiện bảng đơn hàng theo chương trình ở trang chủ" />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <TextField
+                  control={form.control}
+                  name="jobTableTitle"
+                  label="Tiêu đề khối"
+                  placeholder="Việc làm tại Nhật Bản & các thị trường"
+                  maxLength={150}
+                  description="Để trống sẽ dùng tiêu đề mặc định như gợi ý."
+                />
               </CardContent>
             </Card>
           </TabsContent>

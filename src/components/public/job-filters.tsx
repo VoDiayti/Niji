@@ -10,11 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const ALL = "__all__";
 
-export const JOB_FILTER_KEYS = ["thi-truong", "nganh", "gioi-tinh", "tuoi", "luong", "q"] as const;
+export const JOB_FILTER_KEYS = ["chuong-trinh", "thi-truong", "nganh", "gioi-tinh", "tuoi", "luong", "q"] as const;
 
 type JobFiltersProps = {
   markets: { slug: string; name: string }[];
   industries: string[];
+  /** Chương trình (tab bảng đơn hàng) – tùy chọn */
+  programs?: { slug: string; name: string }[];
 };
 
 function useSetParam() {
@@ -68,7 +70,7 @@ function FilterSelect({
 }
 
 /** Bộ lọc đơn hàng – cập nhật trực tiếp lên URL để chia sẻ/đánh dấu được */
-export function JobFilters({ markets, industries }: JobFiltersProps) {
+export function JobFilters({ markets, industries, programs = [] }: JobFiltersProps) {
   const searchParams = useSearchParams();
   const setParams = useSetParam();
   const urlQ = searchParams.get("q") ?? "";
@@ -138,6 +140,11 @@ export function JobFilters({ markets, industries }: JobFiltersProps) {
             )}
           </div>
         </div>
+        {programs.length > 0 && (
+          <div className="lg:col-span-2">
+            <FilterSelect param="chuong-trinh" label="Chương trình" allLabel="Tất cả chương trình" options={programs.map((p) => ({ value: p.slug, label: p.name }))} />
+          </div>
+        )}
         <div className="lg:col-span-2">
           <FilterSelect param="thi-truong" label="Thị trường" allLabel="Tất cả thị trường" options={markets.map((m) => ({ value: m.slug, label: m.name }))} />
         </div>

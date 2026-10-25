@@ -5,6 +5,8 @@ import { ArrowRight, BadgeCheck, CircleCheck, Phone, ShieldCheck, Wallet, Gradua
 import { getSettings } from "@/lib/queries/settings";
 import { getFeaturedMarkets, getMarketOptions } from "@/lib/queries/markets";
 import { getLatestJobs } from "@/lib/queries/job-orders";
+import { getJobTableGroups } from "@/lib/queries/job-programs";
+import { JobTableSection } from "@/components/public/job-table-section";
 import { getLatestPosts } from "@/lib/queries/posts";
 import { getActiveBanners, getActivePartners, getActiveTestimonials } from "@/lib/queries/site-content";
 import { buildMetadata } from "@/lib/seo";
@@ -42,7 +44,7 @@ const TRUST_POINTS = [
 ];
 
 export default async function HomePage() {
-  const [s, banners, markets, jobs, posts, testimonials, partners, marketOptions] = await Promise.all([
+  const [s, banners, markets, jobs, posts, testimonials, partners, marketOptions, jobTable] = await Promise.all([
     getSettings(),
     getActiveBanners(),
     getFeaturedMarkets(6),
@@ -51,6 +53,7 @@ export default async function HomePage() {
     getActiveTestimonials(6),
     getActivePartners(),
     getMarketOptions(),
+    getJobTableGroups(),
   ]);
 
   const heroBanners =
@@ -91,6 +94,9 @@ export default async function HomePage() {
           </ul>
         </div>
       </section>
+
+      {/* Bảng đơn hàng theo chương trình (tab) – bật/tắt & tiêu đề trong Admin → Cài đặt chung */}
+      {s.jobTableEnabled && <JobTableSection title={s.jobTableTitle || "Việc làm tại Nhật Bản & các thị trường"} groups={jobTable} />}
 
       {/* Giới thiệu ngắn */}
       <section className="bg-background py-14 md:py-20">

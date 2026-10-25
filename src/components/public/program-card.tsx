@@ -42,7 +42,7 @@ export function ProgramCard({ program, className }: { program: ProgramCardData; 
           )}
           {program.tuition && (
             <li className="flex gap-2">
-              <Wallet className="mt-0.5 size-4 shrink-0 text-cta" />
+              <Wallet className="mt-0.5 size-4 shrink-0 text-primary" />
               <span className="line-clamp-2">{program.tuition}</span>
             </li>
           )}

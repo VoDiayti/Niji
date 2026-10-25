@@ -26,17 +26,21 @@ import { applyFieldErrors } from "@/components/admin/banners/form-utils";
 
 const LIST_PATH = "/admin/don-hang";
 const INDUSTRY_LIST_ID = "job-industry-options";
+/** Giá trị Select "Không gắn chương trình" (Radix Select không nhận chuỗi rỗng) */
+const NO_PROGRAM = "__none__";
 
 type JobFormProps = {
   initialData?: JobOrder;
   markets: { id: string; name: string }[];
   /** Các ngành nghề đã có để gợi ý */
   industries: string[];
+  /** Chương trình (tab bảng đơn hàng trang chủ) – gồm cả tab đang ẩn */
+  programs: { id: string; name: string; isActive: boolean }[];
 };
 
 const toDateInput = (d: Date | null | undefined) => (d ? format(d, "yyyy-MM-dd") : "");
 
-export function JobForm({ initialData, markets, industries }: JobFormProps) {
+export function JobForm({ initialData, markets, industries, programs }: JobFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [slugLocked, setSlugLocked] = useState(!!initialData);
@@ -47,6 +51,8 @@ export function JobForm({ initialData, markets, industries }: JobFormProps) {
       title: initialData?.title ?? "",
       slug: initialData?.slug ?? "",
       marketId: initialData?.marketId ?? "",
+      // Chương trình đã bị xóa khỏi danh sách → coi như chưa gắn
+      programId: initialData?.programId && programs.some((p) => p.id === initialData.programId) ? initialData.programId : NO_PROGRAM,
       industry: initialData?.industry ?? "",
       quantity: String(initialData?.quantity ?? 1),
       gender: initialData?.gender ?? "ANY",
@@ -280,6 +286,43 @@ export function JobForm({ initialData, markets, industries }: JobFormProps) {
                         <FormDescription>Ưu tiên hiện ở trang chủ.</FormDescription>
                       </div>
                       <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Bảng đơn hàng trang chủ</CardTitle>
+                <CardDescription>Gắn chương trình để đơn hàng xuất hiện trong tab tương ứng của bảng đơn hàng ở trang chủ.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormField
+                  control={form.control}
+                  name="programId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Chương trình (tab bảng đơn hàng trang chủ)</FormLabel>
+                      <Select value={field.value ?? NO_PROGRAM} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className="w-full"><SelectValue placeholder="Không gắn chương trình" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={NO_PROGRAM}>Không gắn chương trình</SelectItem>
+                          {programs.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>{p.isActive ? p.name : `${p.name} (ẩn)`}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        {programs.length === 0 ? (
+                          <>Chưa có chương trình nào – hãy <Link href="/admin/chuong-trinh" className="underline">tạo chương trình</Link> trước.</>
+                        ) : (
+                          "Chỉ đơn hàng “Đang tuyển” có gắn chương trình mới hiện trong bảng; tab đang ẩn không hiển thị ở trang chủ."
+                        )}
+                      </FormDescription>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />

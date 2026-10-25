@@ -24,6 +24,8 @@ export const jobSchema = z
     title: text(200).min(5, "Vui lòng nhập tiêu đề (tối thiểu 5 ký tự)"),
     slug: text(200).optional(),
     marketId: z.string().min(1, "Vui lòng chọn thị trường"),
+    /** JobProgram.id – tab bảng đơn hàng trang chủ; "__none__" hoặc rỗng = không gắn */
+    programId: z.string().optional(),
     industry: text(100).min(1, "Vui lòng nhập ngành nghề"),
     quantity: z
       .string()

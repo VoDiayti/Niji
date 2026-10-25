@@ -18,7 +18,7 @@ export function SectionHeading({ label, title, description, align = "center", to
   return (
     <div className={cn("mb-10 max-w-3xl md:mb-12", align === "center" ? "mx-auto text-center" : "text-left", className)}>
       {label && (
-        <p className={cn("mb-2 text-sm font-semibold uppercase tracking-wider", tone === "light" ? "text-amber-300" : "text-cta")}>{label}</p>
+        <p className={cn("mb-2 text-sm font-semibold uppercase tracking-wider", tone === "light" ? "text-amber-300" : "text-primary")}>{label}</p>
       )}
       <Tag className={cn("text-2xl font-bold leading-tight md:text-4xl", tone === "light" ? "text-white" : "text-brand-dark")}>{title}</Tag>
       {description && (

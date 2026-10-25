@@ -1,5 +1,5 @@
 import {
-  Briefcase, ClipboardList, FileText, FolderOpen, Globe, GraduationCap, Handshake, Image as ImageIcon, LayoutDashboard,
+  Briefcase, ClipboardList, FileText, FolderOpen, Globe, GraduationCap, Handshake, Image as ImageIcon, LayoutDashboard, LayoutList,
   MessageCircle, PanelTop, Quote, Settings, Tag, UserCog, type LucideIcon,
 } from "lucide-react";
 
@@ -20,6 +20,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { href: "/admin/the", label: "Thẻ (tag)", icon: Tag },
       { href: "/admin/thi-truong", label: "Thị trường", icon: Globe },
       { href: "/admin/don-hang", label: "Đơn hàng tuyển dụng", icon: Briefcase },
+      { href: "/admin/chuong-trinh", label: "Chương trình (tab đơn hàng)", icon: LayoutList },
       { href: "/admin/dao-tao", label: "Du học – Đào tạo", icon: GraduationCap },
     ],
   },

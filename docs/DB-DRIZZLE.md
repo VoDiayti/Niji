@@ -24,7 +24,8 @@ import { PostStatus, LeadStatus, POST_STATUS_VALUES } from "@/db/enums";  // enu
 | Post | `posts` | `category`, `author`, `postTags` → mỗi phần tử có `.tag` |
 | _PostToTag | `postTags` (cột `postId` = "A", `tagId` = "B") | `post`, `tag` |
 | Market | `markets` | `jobOrders`, `leads` |
-| JobOrder | `jobOrders` | `market`, `leads` |
+| JobProgram | `jobPrograms` (tab đơn hàng trang chủ) | `jobOrders` |
+| JobOrder | `jobOrders` (`programId` → JobProgram, không FK) | `market`, `program`, `leads` |
 | Lead | `leads` | `market`, `jobOrder` |
 | Media | `media` | `uploadedBy` |
 | Testimonial / Faq / Partner / Banner / TrainingProgram / Setting | `testimonials` / `faqs` / `partners` / `banners` / `trainingPrograms` / `settings` | – |

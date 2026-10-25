@@ -45,6 +45,9 @@ export const settingsSchema = z.object({
   aboutContent: z.string().optional(),
   vision: optionalText(1000),
   mission: optionalText(1000),
+  // Trang chủ – khối bảng đơn hàng theo chương trình
+  jobTableTitle: optionalText(150),
+  jobTableEnabled: z.boolean(),
   // SEO
   metaTitle: optionalText(160),
   metaDescription: optionalText(320),

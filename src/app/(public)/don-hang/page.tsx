@@ -9,6 +9,7 @@ import { buildMetadata } from "@/lib/seo";
 import { Button } from "@/components/ui/button";
 import { PageHero } from "@/components/public/page-hero";
 import { JobFilters } from "@/components/public/job-filters";
+import { getActiveJobPrograms } from "@/lib/queries/job-programs";
 import { JobCard } from "@/components/public/job-card";
 import { PublicPagination } from "@/components/public/public-pagination";
 import { PublicEmptyState } from "@/components/public/empty-state";
@@ -33,6 +34,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 export default async function JobsPage({ searchParams }: Props) {
   const sp = await searchParams;
   const filters = {
+    program: paramString(sp["chuong-trinh"]),
     market: paramString(sp["thi-truong"]),
     industry: paramString(sp["nganh"]),
     gender: paramString(sp["gioi-tinh"]),
@@ -42,7 +44,7 @@ export default async function JobsPage({ searchParams }: Props) {
     page: paramPage(sp["page"]),
   };
 
-  const [s, markets, industries, result] = await Promise.all([getSettings(), getMarketLinks(), getJobIndustries(), searchJobs(filters)]);
+  const [s, markets, industries, programs, result] = await Promise.all([getSettings(), getMarketLinks(), getJobIndustries(), getActiveJobPrograms(), searchJobs(filters)]);
   const activeMarket = markets.find((m) => m.slug === filters.market);
 
   return (
@@ -56,7 +58,7 @@ export default async function JobsPage({ searchParams }: Props) {
       <section className="bg-muted py-10 md:py-14">
         <div className="container-page space-y-8">
           <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl border bg-card" />}>
-            <JobFilters markets={markets} industries={industries} />
+            <JobFilters markets={markets} industries={industries} programs={programs} />
           </Suspense>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -104,7 +106,7 @@ export default async function JobsPage({ searchParams }: Props) {
             page={result.page}
             totalPages={result.totalPages}
             pathname="/don-hang"
-            query={{ "thi-truong": filters.market, nganh: filters.industry, "gioi-tinh": filters.gender, tuoi: filters.age, luong: filters.salary, q: filters.q }}
+            query={{ "chuong-trinh": filters.program, "thi-truong": filters.market, nganh: filters.industry, "gioi-tinh": filters.gender, tuoi: filters.age, luong: filters.salary, q: filters.q }}
           />
         </div>
       </section>

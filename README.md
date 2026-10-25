@@ -1,6 +1,6 @@
 # Website công ty xuất khẩu lao động – bản Cloudflare
 
-Website gồm **trang công khai** (giới thiệu, thị trường, đơn hàng tuyển dụng, du học – đào tạo, tin tức, liên hệ, FAQ, form đăng ký tư vấn) và **trang quản trị** `/admin` (bài viết, chuyên mục, thẻ, thị trường, đơn hàng, đăng ký tư vấn + xuất CSV, banner, cảm nhận, FAQ, đối tác, thư viện ảnh, cài đặt chung, tài khoản).
+Website gồm **trang công khai** (giới thiệu, bảng đơn hàng theo chương trình, thị trường, đơn hàng tuyển dụng, du học – đào tạo, tin tức, liên hệ, FAQ, form đăng ký tư vấn) và **trang quản trị** `/admin` (bài viết, chuyên mục, thẻ, thị trường, đơn hàng, chương trình – tab bảng đơn hàng, đăng ký tư vấn + xuất CSV, banner, cảm nhận, FAQ, đối tác, thư viện ảnh, cài đặt chung, tài khoản).
 
 Toàn bộ hạ tầng chạy trên **Cloudflare** và **đủ nhỏ để chạy trên gói Workers Free** (bundle ~2,7 MiB nén / giới hạn 3 MiB):
 
@@ -127,5 +127,6 @@ npm run db:migrate:remote                # áp dụng production
 
 1. Admin → **Cài đặt chung**: tên công ty, số giấy phép, hotline/Zalo, email, địa chỉ, bản đồ, mạng xã hội, số liệu, giới thiệu, SEO (dữ liệu seed là mẫu).
 2. **Tài khoản**: đổi mật khẩu admin, tạo tài khoản biên tập viên.
-3. Thay nội dung/ảnh mẫu trong Banner, Thị trường, Đơn hàng, Bài viết, Cảm nhận, FAQ, Đối tác; thay `public/logo*.svg`, `public/og-default.jpg`, `src/app/icon.svg`.
-4. Đặt `NEXT_PUBLIC_SITE_URL` và (nếu có) `R2_PUBLIC_URL` đúng tên miền trước khi deploy.
+3. **Chương trình (tab đơn hàng)**: đặt tên/thứ tự các tab (Thực tập sinh, Kỹ năng đặc định, Điều dưỡng, Kỹ sư...), rồi trong mỗi Đơn hàng chọn chương trình để đơn hiện trong bảng ở trang chủ; tiêu đề và bật/tắt khối này nằm ở Cài đặt chung → tab Trang chủ.
+4. Thay nội dung/ảnh mẫu trong Banner, Thị trường, Đơn hàng, Bài viết, Cảm nhận, FAQ, Đối tác; thay `public/logo*.svg`, `public/og-default.jpg`, `src/app/icon.svg`.
+5. Đặt `NEXT_PUBLIC_SITE_URL` và (nếu có) `R2_PUBLIC_URL` đúng tên miền trước khi deploy.

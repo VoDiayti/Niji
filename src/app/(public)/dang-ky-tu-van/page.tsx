@@ -55,7 +55,7 @@ export default async function ConsultationPage() {
           {/* Lý do chọn */}
           <div className="order-2 space-y-6 lg:col-span-2">
             <div className="rounded-2xl border bg-card p-6 shadow-sm">
-              <p className="text-sm font-semibold uppercase tracking-wider text-cta">Vì sao chọn chúng tôi</p>
+              <p className="text-sm font-semibold uppercase tracking-wider text-primary">Vì sao chọn chúng tôi</p>
               <h2 className="mt-1 text-xl font-bold text-brand-dark md:text-2xl">{s.shortName || s.companyName} đồng hành cùng bạn</h2>
               <ul className="mt-5 space-y-4">
                 {REASONS.map((r) => (

@@ -36,6 +36,8 @@ export const DEFAULT_SETTINGS: Setting = {
   metaTitle: null,
   metaDescription: null,
   ogImage: "/og-default.jpg",
+  jobTableTitle: null,
+  jobTableEnabled: true,
   updatedAt: new Date(0),
 };
 

@@ -132,7 +132,7 @@ export function LeadForm({
               render={({ field }) => (
                 <FormItem className={variant === "compact" ? "col-span-2" : undefined}>
                   <FormLabel className={labelClass}>
-                    Họ và tên <span className="text-cta">*</span>
+                    Họ và tên <span className="text-primary">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="Nguyễn Văn A" autoComplete="name" className={inputClass} />
@@ -147,7 +147,7 @@ export function LeadForm({
               render={({ field }) => (
                 <FormItem className={variant === "compact" ? "col-span-2" : undefined}>
                   <FormLabel className={labelClass}>
-                    Số điện thoại <span className="text-cta">*</span>
+                    Số điện thoại <span className="text-primary">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input {...field} type="tel" inputMode="tel" placeholder="09xx xxx xxx" autoComplete="tel" className={inputClass} />

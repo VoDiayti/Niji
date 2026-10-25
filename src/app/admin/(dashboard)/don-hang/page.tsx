@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Pencil, Plus } from "lucide-react";
 import { and, asc, count, desc, eq, like, or } from "drizzle-orm";
-import { db, jobOrders, markets } from "@/db";
+import { db, jobOrders, jobPrograms, markets } from "@/db";
 import { ADMIN_PAGE_SIZE, GENDER_LABELS, JOB_STATUS_LABELS } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
 import { deleteJob, toggleJobFeatured } from "@/actions/jobs";
@@ -30,29 +30,32 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
   const market = first(sp.market) ?? "";
   const status = first(sp.status);
   const industry = first(sp.industry) ?? "";
+  const program = first(sp.program) ?? "";
   const page = Math.max(1, Number(first(sp.page)) || 1);
 
   const where = and(
     q ? or(like(jobOrders.title, `%${q}%`), like(jobOrders.industry, `%${q}%`), like(jobOrders.location, `%${q}%`)) : undefined,
     market ? eq(jobOrders.marketId, market) : undefined,
     status === "OPEN" || status === "CLOSED" ? eq(jobOrders.status, status) : undefined,
-    industry ? eq(jobOrders.industry, industry) : undefined
+    industry ? eq(jobOrders.industry, industry) : undefined,
+    program ? eq(jobOrders.programId, program) : undefined
   );
 
-  const [jobs, [{ total }], marketOptions, industryRows] = await Promise.all([
+  const [jobs, [{ total }], marketOptions, industryRows, programOptions] = await Promise.all([
     db.query.jobOrders.findMany({
       where,
       orderBy: [desc(jobOrders.createdAt)],
       limit: ADMIN_PAGE_SIZE,
       offset: (page - 1) * ADMIN_PAGE_SIZE,
-      with: { market: { columns: { id: true, name: true } } },
+      with: { market: { columns: { id: true, name: true } }, program: { columns: { name: true } } },
     }),
     db.select({ total: count() }).from(jobOrders).where(where),
     db.select({ id: markets.id, name: markets.name }).from(markets).orderBy(asc(markets.order), asc(markets.name)),
     db.selectDistinct({ industry: jobOrders.industry }).from(jobOrders).orderBy(asc(jobOrders.industry)),
+    db.query.jobPrograms.findMany({ orderBy: [asc(jobPrograms.order), asc(jobPrograms.name)], columns: { id: true, name: true, isActive: true } }),
   ]);
   const totalPages = Math.ceil(total / ADMIN_PAGE_SIZE);
-  const hasFilter = Boolean(q || market || status || industry);
+  const hasFilter = Boolean(q || market || status || industry || program);
 
   return (
     <>
@@ -76,6 +79,12 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
           options={Object.entries(JOB_STATUS_LABELS).map(([value, label]) => ({ value, label }))}
         />
         <UrlParamSelect param="industry" allLabel="Tất cả ngành" placeholder="Ngành nghề" options={industryRows.map((r) => ({ value: r.industry, label: r.industry }))} />
+        <UrlParamSelect
+          param="program"
+          allLabel="Tất cả chương trình"
+          placeholder="Chương trình"
+          options={programOptions.map((p) => ({ value: p.id, label: p.isActive ? p.name : `${p.name} (ẩn)` }))}
+        />
       </div>
 
       {jobs.length === 0 ? (
@@ -92,6 +101,7 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
                 <TableHead className="w-24">Ảnh</TableHead>
                 <TableHead>Đơn hàng</TableHead>
                 <TableHead className="hidden lg:table-cell">Thị trường / Ngành</TableHead>
+                <TableHead className="hidden xl:table-cell">Chương trình</TableHead>
                 <TableHead className="hidden text-center xl:table-cell">SL</TableHead>
                 <TableHead className="hidden xl:table-cell">Giới tính / Tuổi</TableHead>
                 <TableHead className="hidden md:table-cell">Lương</TableHead>
@@ -114,6 +124,9 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
                     <TableCell className="hidden whitespace-normal lg:table-cell">
                       <p>{job.market.name}</p>
                       <p className="text-xs text-muted-foreground">{job.industry}</p>
+                    </TableCell>
+                    <TableCell className="hidden max-w-40 whitespace-normal xl:table-cell">
+                      {job.program ? <span className="line-clamp-2 text-sm">{job.program.name}</span> : <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className="hidden text-center xl:table-cell">{job.quantity}</TableCell>
                     <TableCell className="hidden xl:table-cell">

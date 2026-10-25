@@ -1,6 +1,6 @@
 import "server-only";
 import { and, asc, count, desc, eq, gte, inArray, isNull, like, lt, lte, ne, or, type SQL } from "drizzle-orm";
-import { db, jobOrders, markets } from "@/db";
+import { db, jobOrders, jobPrograms, markets } from "@/db";
 import type { JobOrder, Market } from "@/db/types";
 import { AGE_RANGES, PAGE_SIZE, SALARY_RANGES } from "@/lib/constants";
 import { slugify } from "@/lib/slug";
@@ -44,6 +44,8 @@ export function isDeadlinePassed(deadline: Date | null | undefined): boolean {
 export type JobFilters = {
   /** slug thị trường */
   market?: string;
+  /** slug chương trình (tab bảng đơn hàng) */
+  program?: string;
   industry?: string;
   gender?: string;
   age?: string;
@@ -55,6 +57,10 @@ export type JobFilters = {
 /** Chuyển tham số lọc thành điều kiện SQL (Drizzle) */
 export function buildJobWhere(f: JobFilters): SQL | undefined {
   const conditions: (SQL | undefined)[] = [openJob];
+
+  if (f.program) {
+    conditions.push(inArray(jobOrders.programId, db.select({ id: jobPrograms.id }).from(jobPrograms).where(eq(jobPrograms.slug, f.program))));
+  }
 
   if (f.market) {
     conditions.push(

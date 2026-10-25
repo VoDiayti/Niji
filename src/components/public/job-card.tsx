@@ -89,8 +89,8 @@ export function JobCard({ job, className }: { job: JobCardData; className?: stri
 
         {job.salaryText && (
           <p className="mt-3 flex items-start gap-1.5 text-sm">
-            <Banknote className="mt-0.5 size-4 shrink-0 text-cta" />
-            <span className="font-semibold text-cta">{job.salaryText}</span>
+            <Banknote className="mt-0.5 size-4 shrink-0 text-primary" />
+            <span className="font-semibold text-primary">{job.salaryText}</span>
           </p>
         )}
 

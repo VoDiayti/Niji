@@ -1,6 +1,6 @@
 /** Kiểu dữ liệu của từng bảng (dùng `import type` ở cả server lẫn client component). */
 import type {
-  banners, categories, faqs, jobOrders, leads, markets, media, partners, posts, postTags, settings, tags, testimonials, trainingPrograms, users,
+  banners, categories, faqs, jobOrders, jobPrograms, leads, markets, media, partners, posts, postTags, settings, tags, testimonials, trainingPrograms, users,
 } from "./schema";
 
 export type User = typeof users.$inferSelect;
@@ -14,6 +14,8 @@ export type NewPost = typeof posts.$inferInsert;
 export type PostTag = typeof postTags.$inferSelect;
 export type Market = typeof markets.$inferSelect;
 export type NewMarket = typeof markets.$inferInsert;
+export type JobProgram = typeof jobPrograms.$inferSelect;
+export type NewJobProgram = typeof jobPrograms.$inferInsert;
 export type JobOrder = typeof jobOrders.$inferSelect;
 export type NewJobOrder = typeof jobOrders.$inferInsert;
 export type Lead = typeof leads.$inferSelect;

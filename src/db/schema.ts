@@ -142,6 +142,22 @@ export const markets = sqliteTable(
   (t) => [uniqueIndex("Market_slug_key").on(t.slug)]
 );
 
+/** Chương trình / nhóm đơn hàng – là các tab của bảng đơn hàng trên trang chủ (vd. Thực tập sinh, Kỹ năng đặc định, Điều dưỡng) */
+export const jobPrograms = sqliteTable(
+  "JobProgram",
+  {
+    id: id(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    description: text("description"),
+    order: integer("order").notNull().default(0),
+    isActive: integer("isActive", { mode: "boolean" }).notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("JobProgram_slug_key").on(t.slug)]
+);
+
 export const jobOrders = sqliteTable(
   "JobOrder",
   {
@@ -149,6 +165,8 @@ export const jobOrders = sqliteTable(
     title: text("title").notNull(),
     slug: text("slug").notNull(),
     marketId: text("marketId").notNull().references(() => markets.id, { onDelete: "restrict", onUpdate: "cascade" }),
+    /** Tab chương trình trên trang chủ (JobProgram.id); null = không hiện trong bảng */
+    programId: text("programId"),
     industry: text("industry").notNull(),
     quantity: integer("quantity").notNull().default(1),
     gender: text("gender", { enum: GENDER_VALUES }).notNull().default("ANY"),
@@ -176,6 +194,7 @@ export const jobOrders = sqliteTable(
     uniqueIndex("JobOrder_slug_key").on(t.slug),
     index("JobOrder_status_marketId_idx").on(t.status, t.marketId),
     index("JobOrder_industry_idx").on(t.industry),
+    index("JobOrder_programId_idx").on(t.programId),
   ]
 );
 
@@ -323,6 +342,9 @@ export const settings = sqliteTable("Setting", {
   metaTitle: text("metaTitle"),
   metaDescription: text("metaDescription"),
   ogImage: text("ogImage"),
+  /** Khối "bảng đơn hàng theo chương trình" ở trang chủ */
+  jobTableTitle: text("jobTableTitle"),
+  jobTableEnabled: integer("jobTableEnabled", { mode: "boolean" }).notNull().default(true),
   updatedAt: updatedAt(),
 });
 
@@ -357,8 +379,13 @@ export const marketsRelations = relations(markets, ({ many }) => ({
   leads: many(leads),
 }));
 
+export const jobProgramsRelations = relations(jobPrograms, ({ many }) => ({
+  jobOrders: many(jobOrders),
+}));
+
 export const jobOrdersRelations = relations(jobOrders, ({ one, many }) => ({
   market: one(markets, { fields: [jobOrders.marketId], references: [markets.id] }),
+  program: one(jobPrograms, { fields: [jobOrders.programId], references: [jobPrograms.id] }),
   leads: many(leads),
 }));
 

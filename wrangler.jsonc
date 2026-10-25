@@ -24,7 +24,7 @@
       "migrations_dir": "migrations",
       // true: `npm run dev` / `npm run preview` dùng D1 THẬT trên Cloudflare (cần `npx wrangler login`,
       // đã chạy `npm run db:migrate:remote` + `npm run db:seed:remote`). false: dùng bản giả lập trong .wrangler/state.
-      "remote": true
+      "remote": false
     }
   ],
   // Bucket R2 chứa ảnh upload. Tạo bằng: npx wrangler r2 bucket create niji-xkld-media
@@ -33,7 +33,7 @@
       "binding": "R2_BUCKET",
       "bucket_name": "pd-imgs",
       // true: upload ảnh vào bucket R2 THẬT khi chạy local (đồng bộ với R2_PUBLIC_URL trong .dev.vars)
-      "remote": true
+      "remote": false
     }
   ],
   // Tối ưu ảnh cho next/image bằng Cloudflare Images

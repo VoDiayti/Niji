@@ -23,7 +23,7 @@ export function InfoItem({
       </span>
       <div className="min-w-0">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className={cn("mt-0.5 text-sm font-semibold leading-snug md:text-[15px]", highlight && "text-cta")}>{value}</p>
+        <p className={cn("mt-0.5 text-sm font-semibold leading-snug md:text-[15px]", highlight && "text-primary")}>{value}</p>
       </div>
     </div>
   );

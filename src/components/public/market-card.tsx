@@ -43,7 +43,7 @@ export function MarketCard({ market, className, priority }: { market: MarketCard
         <ul className="mt-4 space-y-2 text-sm">
           {market.salaryRange && (
             <li className="flex gap-2">
-              <Banknote className="mt-0.5 size-4 shrink-0 text-cta" />
+              <Banknote className="mt-0.5 size-4 shrink-0 text-primary" />
               <span>
                 <span className="text-muted-foreground">Thu nhập: </span>
                 <span className="font-semibold text-foreground">{market.salaryRange}</span>

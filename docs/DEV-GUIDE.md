@@ -84,7 +84,8 @@ Enum: `Role(ADMIN|EDITOR)`, `PostStatus(DRAFT|PUBLISHED|SCHEDULED)`, `JobStatus(
 - `Tag`: name, slug → posts (m-n, bảng `_PostToTag`)
 - `Post`: title, slug, excerpt, content(HTML), coverImage, status, publishedAt, isFeatured, viewCount, metaTitle, metaDescription, ogImage, categoryId, authorId, tags
 - `Market`: name, slug, countryCode, image, summary, description(HTML), requirements(HTML), salaryRange, cost, duration, **industries / highlights: chuỗi JSON của mảng** (đọc bằng `parseStringList()`, ghi bằng `JSON.stringify()`), isFeatured, isActive, order, metaTitle, metaDescription → jobOrders, leads
-- `JobOrder`: title, slug, marketId, industry, quantity, gender, ageMin, ageMax, salaryText, salaryVnd(Int, VNĐ/tháng để lọc), cost, location, deadline, interviewDate, departureNote, description(HTML), requirements(HTML), benefits(HTML), image, status, isFeatured, viewCount → leads
+- `JobProgram`: name, slug, description, order, isActive – tab của bảng đơn hàng trang chủ (`getJobTableGroups()` trong `src/lib/queries/job-programs.ts`)
+- `JobOrder`: title, slug, marketId, programId (→ JobProgram, null = không hiện trong bảng), industry, quantity, gender, ageMin, ageMax, salaryText, salaryVnd(Int, VNĐ/tháng để lọc), cost, location, deadline, interviewDate, departureNote, description(HTML), requirements(HTML), benefits(HTML), image, status, isFeatured, viewCount → leads
 - `Lead`: type, fullName, phone, email, birthYear, hometown, marketId, jobOrderId, message, status, adminNote, source, ipAddress
 - `Testimonial`: name, position, content, avatar, rating, order, isActive
 - `Faq`: question, answer, order, isActive
@@ -92,7 +93,7 @@ Enum: `Role(ADMIN|EDITOR)`, `PostStatus(DRAFT|PUBLISHED|SCHEDULED)`, `JobStatus(
 - `Banner`: title, subtitle, image, ctaText, ctaLink, ctaText2, ctaLink2, order, isActive
 - `TrainingProgram`: title, slug, type, summary, content(HTML), image, duration, tuition, order, isActive
 - `Media`: url, storageKey (key trong R2), filename, mimeType, size, width, height, alt, uploadedById
-- `Setting` (1 dòng, id=1): companyName, shortName, slogan, logo, licenseNumber, licenseIssuer, taxCode, hotline, zalo, email, address, mapEmbedUrl, workingHours, facebook, youtube, tiktok, messenger, foundedYear, statWorkers, statYears, statPartners, statMarkets, aboutShort, aboutContent(HTML), vision, mission, metaTitle, metaDescription, ogImage
+- `Setting` (1 dòng, id=1): jobTableTitle, jobTableEnabled (khối bảng đơn hàng trang chủ), companyName, shortName, slogan, logo, licenseNumber, licenseIssuer, taxCode, hotline, zalo, email, address, mapEmbedUrl, workingHours, facebook, youtube, tiktok, messenger, foundedYear, statWorkers, statYears, statPartners, statMarkets, aboutShort, aboutContent(HTML), vision, mission, metaTitle, metaDescription, ogImage
 
 Giới hạn của SQLite/D1 cần nhớ:
 - Không có kiểu mảng → lưu JSON string. Tìm kiếm bằng `like` (không phân biệt hoa thường với ký tự ASCII).
@@ -177,7 +178,7 @@ export async function createPost(input: unknown): Promise<ActionResult<{ id: str
 `/`, `/gioi-thieu`, `/thi-truong`, `/thi-truong/[slug]`, `/don-hang` (lọc `thi-truong`, `nganh`, `gioi-tinh`, `tuoi`, `luong`, `q`, `page`), `/don-hang/[slug]`, `/du-hoc-dao-tao`, `/du-hoc-dao-tao/[slug]`, `/tin-tuc`, `/tin-tuc/[slug]`, `/tin-tuc/chuyen-muc/[slug]`, `/tin-tuc/the/[slug]`, `/lien-he`, `/cau-hoi-thuong-gap`, `/dang-ky-tu-van`, `sitemap.xml`, `robots.txt`.
 
 ### Admin (`src/app/admin/(dashboard)/...`) – menu trong `src/components/admin/nav.ts`
-`/admin` (dashboard), `/admin/bai-viet` (+ `/moi`, `/[id]`, `/[id]/xem-truoc`), `/admin/chuyen-muc`, `/admin/the`, `/admin/thi-truong`, `/admin/don-hang`, `/admin/dao-tao`, `/admin/dang-ky` (+ `/[id]`, `GET /api/admin/dang-ky/export`), `/admin/banner`, `/admin/cam-nhan`, `/admin/faq`, `/admin/doi-tac`, `/admin/thu-vien-anh`, `/admin/cai-dat`, `/admin/tai-khoan` (+ `/moi`, `/[id]`, `/doi-mat-khau`).
+`/admin` (dashboard), `/admin/bai-viet` (+ `/moi`, `/[id]`, `/[id]/xem-truoc`), `/admin/chuyen-muc`, `/admin/the`, `/admin/thi-truong`, `/admin/don-hang`, `/admin/chuong-trinh` (tab bảng đơn hàng), `/admin/dao-tao`, `/admin/dang-ky` (+ `/[id]`, `GET /api/admin/dang-ky/export`), `/admin/banner`, `/admin/cam-nhan`, `/admin/faq`, `/admin/doi-tac`, `/admin/thu-vien-anh`, `/admin/cai-dat`, `/admin/tai-khoan` (+ `/moi`, `/[id]`, `/doi-mat-khau`).
 
 ## 6. Chạy & kiểm tra
 
@@ -192,7 +193,7 @@ export async function createPost(input: unknown): Promise<ActionResult<{ id: str
 
 - lucide-react v1: `TextAlignStart/Center/End/Justify`, `LoaderCircle`, `Trash`, `Image` (import `Image as ImageIcon`), `CircleCheck`, `CircleAlert`, `CircleQuestionMark`, `House`, `Funnel`, `Building`, `Images`. **Không có icon thương hiệu** → SVG inline.
 - shadcn Button `size`: default | xs | sm | lg | icon | icon-xs | icon-sm | icon-lg; `variant`: default | destructive | outline | secondary | ghost | link. `DropdownMenuItem variant="destructive"`.
-- Tailwind 4: class `container-page`; màu thương hiệu `bg-primary`, `bg-cta text-cta-foreground hover:bg-cta-hover`, `bg-brand-light`, `text-brand-dark`.
+- Tailwind 4: class `container-page`; màu thương hiệu **đỏ** `bg-primary`/`text-primary`, nút kêu gọi hành động **vàng hổ phách chữ tối** `bg-cta text-cta-foreground hover:bg-cta-hover` (không dùng `text-white` trên nền cta), nền nhạt `bg-brand-light`, đỏ đậm `text-brand-dark`. Chữ nhấn trên nền sáng dùng `text-primary` (không dùng `text-cta` vì vàng trên trắng khó đọc). Đổi bảng màu chỉ cần sửa biến trong `src/app/globals.css` và logo trong `public/logo*.svg`, `src/app/icon.svg`.
 - ESLint React Compiler (react-hooks v7): không gọi `Date.now()`/`Math.random()` trực tiếp trong thân component, không `setState` trong `useEffect` chỉ để đồng bộ props, không gán `ref.current` khi render.
 - TipTap v3: `useEditorState` chỉ làm mới snapshot sau transaction đầu tiên – `RichTextEditor` đã xử lý.
 - Plugin chia sẻ Zalo chính thức cần `NEXT_PUBLIC_ZALO_OA_ID`; phần tử nút phải tạo bằng DOM thuần (xem `share-buttons.tsx`).

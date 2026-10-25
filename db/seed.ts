@@ -92,6 +92,8 @@ async function main() {
       metaDescription:
         "Công ty xuất khẩu lao động NIJI – tuyển dụng đơn hàng Nhật Bản, Hàn Quốc, Đài Loan, Đức, châu Âu. Chi phí minh bạch, đào tạo bài bản, hỗ trợ trọn gói.",
       ogImage: "/og-default.jpg",
+      jobTableTitle: "Việc làm tại Nhật Bản & các thị trường",
+      jobTableEnabled: true,
       updatedAt: now,
     },
   ]);
@@ -212,6 +214,33 @@ async function main() {
     },
   ]);
 
+  // ---------- CHƯƠNG TRÌNH (tab bảng đơn hàng trang chủ) ----------
+  const jobProgram = (slug: string) => sid(`job-program:${slug}`);
+  insert("JobProgram", [
+    ["thuc-tap-sinh-nhat-ban", "Thực tập sinh Nhật Bản", "Chương trình thực tập sinh kỹ năng 3 – 5 năm tại Nhật Bản"],
+    ["ky-nang-dac-dinh", "Kỹ năng đặc định", "Visa Tokutei Ginou – làm việc tới 5 năm, lương ngang người Nhật"],
+    ["dieu-duong", "Điều dưỡng", "Điều dưỡng, hộ lý tại Nhật Bản và CHLB Đức"],
+    ["ky-su", "Kỹ sư", "Kỹ sư, kỹ thuật viên có bằng cấp làm việc dài hạn"],
+    ["eps-han-quoc", "EPS Hàn Quốc", "Chương trình cấp phép việc làm EPS của Chính phủ Hàn Quốc"],
+    ["dai-loan", "Đài Loan", "Đơn hàng nhà máy, hộ lý tại Đài Loan"],
+    ["chau-au-uc", "Châu Âu & Úc", "Ba Lan, Hungary, Rumani, Úc"],
+  ].map(([slug, name, description], i) => ({ id: jobProgram(slug), name, slug, description, order: i + 1, isActive: true, ...stamps() })));
+  const PROGRAM_OF_JOB: Record<string, string> = {
+    "tuyen-30-nam-co-khi-che-tao-osaka": "thuc-tap-sinh-nhat-ban",
+    "tuyen-20-nu-dien-tu-aichi": "thuc-tap-sinh-nhat-ban",
+    "tuyen-15-che-bien-thuc-pham-hokkaido": "thuc-tap-sinh-nhat-ban",
+    "tuyen-25-nam-xay-dung-cot-thep-tokyo": "thuc-tap-sinh-nhat-ban",
+    "dieu-duong-ky-nang-dac-dinh-fukuoka": "ky-nang-dac-dinh",
+    "eps-han-quoc-40-nam-san-xuat-gyeonggi": "eps-han-quoc",
+    "eps-han-quoc-20-nu-nong-nghiep-jeolla": "eps-han-quoc",
+    "tuyen-50-dien-tu-dao-vien-dai-loan": "dai-loan",
+    "tuyen-20-nam-co-khi-dai-trung": "dai-loan",
+    "dieu-duong-duc-hoc-nghe-co-luong-bayern": "dieu-duong",
+    "tuyen-30-nam-xay-dung-warsaw-ba-lan": "chau-au-uc",
+    "nong-nghiep-uc-palm-20-lao-dong-queensland": "chau-au-uc",
+    "tuyen-10-nu-det-may-dai-loan-da-dong": "dai-loan",
+  };
+
   // ---------- ĐƠN HÀNG ----------
   const benefits = `<ul><li>Ký túc xá đầy đủ tiện nghi, hỗ trợ chi phí ăn ở.</li><li>Tham gia đầy đủ bảo hiểm theo luật nước sở tại.</li><li>Tăng ca theo quy định, thưởng theo năng suất.</li><li>Được hỗ trợ thủ tục gia hạn hoặc chuyển đổi visa khi hết hợp đồng.</li></ul>`;
   const job = (slug: string) => sid(`job:${slug}`);
@@ -230,7 +259,11 @@ async function main() {
     { slug: "nong-nghiep-uc-palm-20-lao-dong-queensland", title: "Nông nghiệp Úc (PALM): 20 lao động thu hoạch trái cây – Queensland", marketId: market("uc"), industry: "Nông nghiệp – thu hoạch", quantity: 20, gender: "ANY", ageMin: 21, ageMax: 45, salaryText: "25 AUD/giờ (~60 triệu VNĐ/tháng)", salaryVnd: 60_000_000, cost: "Theo chương trình, hỗ trợ vé máy bay", location: "Queensland, Úc", deadline: daysAhead(75), interviewDate: daysAhead(80), departureNote: "Yêu cầu tiếng Anh giao tiếp cơ bản", description: `<p>Thu hoạch, đóng gói trái cây tại các trang trại lớn ở Queensland theo chương trình lao động PALM của Chính phủ Úc. Lương theo giờ, được bảo vệ đầy đủ theo luật lao động Úc.</p>`, requirements: `<ul><li>Nam/nữ 21 – 45 tuổi, sức khỏe tốt, chịu được nắng nóng.</li><li>Tiếng Anh giao tiếp cơ bản.</li></ul>`, image: "/images/nong-nghiep.jpg", isFeatured: false, status: "OPEN" },
     { slug: "tuyen-10-nu-det-may-dai-loan-da-dong", title: "Tuyển 10 nữ dệt may – Chương Hóa, Đài Loan", marketId: market("dai-loan"), industry: "Dệt may", quantity: 10, gender: "FEMALE", ageMin: 18, ageMax: 38, salaryText: "28.590 Đài tệ/tháng (~23 triệu VNĐ)", salaryVnd: 23_000_000, cost: "Công khai khi tư vấn", location: "Chương Hóa, Đài Loan", deadline: daysAgo(10), interviewDate: daysAgo(5), departureNote: "Đơn hàng đã đủ người", description: `<p>May công nghiệp, hoàn thiện sản phẩm dệt may xuất khẩu. Đơn hàng đã kết thúc tuyển dụng.</p>`, requirements: `<ul><li>Nữ 18 – 38 tuổi, biết may công nghiệp.</li></ul>`, image: "/images/dien-tu-nha-may.jpg", isFeatured: false, status: "CLOSED" },
   ];
-  insert("JobOrder", jobs.map((j) => ({ id: job(String(j.slug)), ...j, benefits, viewCount: 0, ...stamps() })));
+  insert("JobOrder", jobs.map((j) => ({ id: job(String(j.slug)), ...j, programId: jobProgram(PROGRAM_OF_JOB[String(j.slug)]), benefits, viewCount: 0, ...stamps() })));
+  // Đơn hàng đã có từ trước (INSERT OR IGNORE bỏ qua) → gán chương trình nếu còn trống
+  for (const j of jobs) {
+    statements.push(`UPDATE "JobOrder" SET "programId" = ${lit(jobProgram(PROGRAM_OF_JOB[String(j.slug)]))} WHERE "id" = ${lit(job(String(j.slug)))} AND "programId" IS NULL;`);
+  }
 
   // ---------- BÀI VIẾT ----------
   const post = (slug: string) => sid(`post:${slug}`);

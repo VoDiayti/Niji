@@ -2,13 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
-import { db, jobOrders, markets } from "@/db";
+import { db, jobOrders, jobPrograms, markets } from "@/db";
 import { assertUser } from "@/lib/auth-guard";
 import { fail, ok, safeAction, zodFail, type ActionResult } from "@/lib/action-result";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { jobSchema, type JobFormValues } from "@/lib/validations/job";
 
 const ADMIN_PATH = "/admin/don-hang";
+/** Giá trị Select "Không gắn chương trình" trên form đơn hàng */
+const NO_PROGRAM = "__none__";
+const toProgramId = (v: string | undefined): string | null => (v && v !== NO_PROGRAM ? v : null);
 
 function revalidateJobPages(jobSlugs: (string | undefined)[], marketSlugs: (string | undefined)[]) {
   revalidatePath("/");
@@ -30,6 +33,13 @@ async function resolveSlug(preferred: string | undefined, title: string, exclude
     });
     return !!found;
   });
+}
+
+/** Chương trình (nếu có gắn) phải tồn tại – trả lỗi theo trường để form hiển thị, null nếu hợp lệ */
+async function programNotFound(programId: string | null): Promise<ActionResult<{ id: string }> | null> {
+  if (!programId) return null;
+  const program = await db.query.jobPrograms.findFirst({ columns: { id: true }, where: eq(jobPrograms.id, programId) });
+  return program ? null : fail("Chương trình không tồn tại", { programId: ["Chương trình không tồn tại hoặc đã bị xóa"] });
 }
 
 /** Đơn hàng kèm slug thị trường (dùng để làm mới cache các trang liên quan) */
@@ -59,6 +69,7 @@ function toData(v: JobFormValues) {
   return {
     title: v.title,
     marketId: v.marketId,
+    programId: toProgramId(v.programId),
     industry: v.industry,
     quantity: toInt(v.quantity) ?? 1,
     gender: v.gender,
@@ -88,6 +99,8 @@ export async function createJob(input: unknown): Promise<ActionResult<{ id: stri
 
     const market = await db.query.markets.findFirst({ columns: { slug: true }, where: eq(markets.id, parsed.data.marketId) });
     if (!market) return fail("Thị trường không tồn tại", { marketId: ["Thị trường không tồn tại"] });
+    const programError = await programNotFound(toProgramId(parsed.data.programId));
+    if (programError) return programError;
 
     const slug = await resolveSlug(parsed.data.slug, parsed.data.title);
     const [job] = await db.insert(jobOrders).values({ ...toData(parsed.data), slug }).returning({ id: jobOrders.id });
@@ -106,6 +119,8 @@ export async function updateJob(id: string, input: unknown): Promise<ActionResul
     if (!existing) return fail("Không tìm thấy đơn hàng");
     const market = await db.query.markets.findFirst({ columns: { slug: true }, where: eq(markets.id, parsed.data.marketId) });
     if (!market) return fail("Thị trường không tồn tại", { marketId: ["Thị trường không tồn tại"] });
+    const programError = await programNotFound(toProgramId(parsed.data.programId));
+    if (programError) return programError;
 
     const slug = await resolveSlug(parsed.data.slug, parsed.data.title, id);
     await db.update(jobOrders).set({ ...toData(parsed.data), slug }).where(eq(jobOrders.id, id));

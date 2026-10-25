@@ -29,7 +29,7 @@ export function ProcessSteps() {
                 </span>
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-cta">Bước {i + 1}</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-primary">Bước {i + 1}</p>
                 <h3 className="mt-1 text-lg font-bold leading-snug">{step.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.description}</p>
               </div>

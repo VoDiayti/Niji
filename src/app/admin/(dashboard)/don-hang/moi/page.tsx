@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { asc } from "drizzle-orm";
-import { db, jobOrders, markets } from "@/db";
+import { db, jobOrders, jobPrograms, markets } from "@/db";
 import { PageHeader } from "@/components/admin/page-header";
 import { JobForm } from "@/components/admin/jobs/job-form";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,11 @@ export const metadata: Metadata = { title: "Thêm đơn hàng" };
 export const dynamic = "force-dynamic";
 
 export default async function NewJobPage() {
-  const [marketOptions, industryRows] = await Promise.all([
+  const [marketOptions, industryRows, programOptions] = await Promise.all([
     db.select({ id: markets.id, name: markets.name }).from(markets).orderBy(asc(markets.order), asc(markets.name)),
     db.selectDistinct({ industry: jobOrders.industry }).from(jobOrders).orderBy(asc(jobOrders.industry)),
+    // Kể cả chương trình đang ẩn (form đánh dấu "(ẩn)") để vẫn gắn trước được
+    db.query.jobPrograms.findMany({ orderBy: [asc(jobPrograms.order), asc(jobPrograms.name)], columns: { id: true, name: true, isActive: true } }),
   ]);
 
   return (
@@ -27,7 +29,7 @@ export default async function NewJobPage() {
           </Button>
         }
       />
-      <JobForm markets={marketOptions} industries={industryRows.map((r) => r.industry)} />
+      <JobForm markets={marketOptions} industries={industryRows.map((r) => r.industry)} programs={programOptions} />
     </>
   );
 }
