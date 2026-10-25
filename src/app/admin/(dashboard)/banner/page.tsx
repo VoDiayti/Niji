@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
+import { asc, desc } from "drizzle-orm";
+import { banners, db } from "@/db";
 import { deleteBanner, toggleBannerActive } from "@/actions/banners";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -14,7 +15,7 @@ export const metadata: Metadata = { title: "Banner" };
 export const dynamic = "force-dynamic";
 
 export default async function BannerPage() {
-  const banners = await prisma.banner.findMany({ orderBy: [{ order: "asc" }, { createdAt: "desc" }] });
+  const items = await db.query.banners.findMany({ orderBy: [asc(banners.order), desc(banners.createdAt)] });
 
   return (
     <>
@@ -24,7 +25,7 @@ export default async function BannerPage() {
         actions={<BannerFormDialog />}
       />
 
-      {banners.length === 0 ? (
+      {items.length === 0 ? (
         <EmptyState title="Chưa có banner" description="Thêm banner đầu tiên để trang chủ có ảnh giới thiệu nổi bật." action={<BannerFormDialog />} />
       ) : (
         <Card className="overflow-hidden py-0">
@@ -40,7 +41,7 @@ export default async function BannerPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {banners.map((banner) => (
+              {items.map((banner) => (
                 <TableRow key={banner.id}>
                   <TableCell><Thumbnail src={banner.image} className="w-20" /></TableCell>
                   <TableCell className="max-w-64 whitespace-normal font-medium">

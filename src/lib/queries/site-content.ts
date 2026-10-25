@@ -1,22 +1,27 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { asc, desc, eq } from "drizzle-orm";
+import { banners, db, faqs, partners, testimonials } from "@/db";
 
 /** Banner trang chủ */
 export async function getActiveBanners() {
-  return prisma.banner.findMany({ where: { isActive: true }, orderBy: [{ order: "asc" }, { createdAt: "desc" }] });
+  return db.query.banners.findMany({ where: eq(banners.isActive, true), orderBy: [asc(banners.order), desc(banners.createdAt)] });
 }
 
 /** Cảm nhận học viên / người lao động */
 export async function getActiveTestimonials(limit = 6) {
-  return prisma.testimonial.findMany({ where: { isActive: true }, orderBy: [{ order: "asc" }, { createdAt: "desc" }], take: limit });
+  return db.query.testimonials.findMany({
+    where: eq(testimonials.isActive, true),
+    orderBy: [asc(testimonials.order), desc(testimonials.createdAt)],
+    limit,
+  });
 }
 
 /** Đối tác */
 export async function getActivePartners() {
-  return prisma.partner.findMany({ where: { isActive: true }, orderBy: [{ order: "asc" }, { name: "asc" }] });
+  return db.query.partners.findMany({ where: eq(partners.isActive, true), orderBy: [asc(partners.order), asc(partners.name)] });
 }
 
 /** Câu hỏi thường gặp */
 export async function getActiveFaqs() {
-  return prisma.faq.findMany({ where: { isActive: true }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] });
+  return db.query.faqs.findMany({ where: eq(faqs.isActive, true), orderBy: [asc(faqs.order), asc(faqs.createdAt)] });
 }

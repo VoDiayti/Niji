@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm, type Control, type FieldPath, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import type { Role } from "@/generated/prisma/enums";
+import type { Role } from "@/db/enums";
 import { ROLE_LABELS } from "@/lib/constants";
 import { createUserSchema, updateUserSchema, USER_ROLES, type CreateUserValues, type UpdateUserValues } from "@/lib/validations/user";
 import { createUser, updateUser } from "@/actions/users";

@@ -1,6 +1,6 @@
 import "server-only";
 import type { Metadata } from "next";
-import type { Setting } from "@/generated/prisma/client";
+import type { Setting } from "@/db/types";
 import { getSiteUrl } from "@/lib/queries/settings";
 import { truncate } from "@/lib/format";
 

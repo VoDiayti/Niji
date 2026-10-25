@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, Mail, MessageCircle, Phone, Trash } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { eq } from "drizzle-orm";
+import { db, leads } from "@/db";
 import { LEAD_TYPE_LABELS } from "@/lib/constants";
 import { formatDateTime, telHref, timeAgo, zaloHref } from "@/lib/format";
 import { deleteLead } from "@/actions/leads";
@@ -30,11 +31,11 @@ const Empty = () => <span className="text-muted-foreground">—</span>;
 
 export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const lead = await prisma.lead.findUnique({
-    where: { id },
-    include: {
-      market: { select: { id: true, name: true, slug: true } },
-      jobOrder: { select: { id: true, title: true, slug: true, market: { select: { name: true } } } },
+  const lead = await db.query.leads.findFirst({
+    where: eq(leads.id, id),
+    with: {
+      market: { columns: { id: true, name: true, slug: true } },
+      jobOrder: { columns: { id: true, title: true, slug: true }, with: { market: { columns: { name: true } } } },
     },
   });
   if (!lead) notFound();

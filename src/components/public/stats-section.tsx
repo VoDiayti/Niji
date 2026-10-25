@@ -1,5 +1,5 @@
 import { Award, Globe, Handshake, Users } from "lucide-react";
-import type { Setting } from "@/generated/prisma/client";
+import type { Setting } from "@/db/types";
 import { formatNumber } from "@/lib/format";
 
 type StatsProps = Pick<Setting, "statWorkers" | "statYears" | "statPartners" | "statMarkets">;

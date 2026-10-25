@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
-import type { Partner } from "@/generated/prisma/client";
+import type { Partner } from "@/db/types";
 import { partnerSchema, type PartnerFormValues } from "@/lib/validations/partner";
 import { createPartner, updatePartner } from "@/actions/partners";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";

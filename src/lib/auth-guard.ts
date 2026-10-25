@@ -2,7 +2,7 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ADMIN_LOGIN_PATH } from "@/auth.config";
-import type { Role } from "@/generated/prisma/enums";
+import type { Role } from "@/db/enums";
 
 export type SessionUser = { id: string; name?: string | null; email?: string | null; role: Role };
 

@@ -2,12 +2,12 @@
 
 Website gồm **trang công khai** (giới thiệu, thị trường, đơn hàng tuyển dụng, du học – đào tạo, tin tức, liên hệ, FAQ, form đăng ký tư vấn) và **trang quản trị** `/admin` (bài viết, chuyên mục, thẻ, thị trường, đơn hàng, đăng ký tư vấn + xuất CSV, banner, cảm nhận, FAQ, đối tác, thư viện ảnh, cài đặt chung, tài khoản).
 
-Toàn bộ hạ tầng chạy trên **Cloudflare**:
+Toàn bộ hạ tầng chạy trên **Cloudflare** và **đủ nhỏ để chạy trên gói Workers Free** (bundle ~2,7 MiB nén / giới hạn 3 MiB):
 
 | Thành phần | Dịch vụ |
 |---|---|
 | Web (Next.js 16, App Router) | **Cloudflare Workers** qua [OpenNext](https://opennext.js.org/cloudflare) |
-| Database | **Cloudflare D1** (SQLite) + Prisma 7 (`@prisma/adapter-d1`) |
+| Database | **Cloudflare D1** (SQLite) + **Drizzle ORM** (`drizzle-orm/d1`, schema trong `src/db/schema.ts`) |
 | Ảnh upload | **Cloudflare R2** (binding `R2_BUCKET`), tùy chọn custom domain/`r2.dev` qua `R2_PUBLIC_URL` |
 | Tối ưu ảnh `next/image` | Cloudflare Images (binding `IMAGES`) |
 | Chống spam form | Workers Rate Limiting (binding `LEAD_RATE_LIMITER`) + honeypot |
@@ -23,7 +23,7 @@ Quy ước code: [docs/DEV-GUIDE.md](docs/DEV-GUIDE.md). Mô tả yêu cầu g�
 ## Chạy local
 
 ```bash
-npm install                 # postinstall: prisma generate + wrangler types
+npm install                 # postinstall: wrangler types (sinh worker-configuration.d.ts)
 cp .env.example .env        # sửa AUTH_SECRET (openssl rand -base64 32)
 cp .dev.vars.example .dev.vars   # (nếu chưa có) rồi điền AUTH_SECRET giống .env
 
@@ -52,10 +52,9 @@ Muốn chạy đúng runtime Workers (workerd) trên máy: `npm run preview` (bu
 | `npm run upload` | Build + upload phiên bản mới (không chuyển traffic) |
 | `npm run cf-typegen` | Sinh `worker-configuration.d.ts` từ `wrangler.jsonc` (chạy lại sau khi sửa binding) |
 | `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
-| `npm run db:generate` | Sinh Prisma Client |
-| `npm run db:migration -- ten-thay-doi` | Sinh file SQL migration mới từ thay đổi trong `prisma/schema.prisma` |
+| `npm run db:migration -- ten-thay-doi` | Sinh file SQL migration mới từ thay đổi trong `src/db/schema.ts` (drizzle-kit) |
 | `npm run db:migrate` / `db:migrate:remote` | Áp dụng migration vào D1 local / production |
-| `npm run db:seed` / `db:seed:remote` | Sinh `prisma/seed.sql` và nạp vào D1 local / production |
+| `npm run db:seed` / `db:seed:remote` | Sinh `db/seed.sql` và nạp vào D1 local / production |
 | `npm run db:shell -- "SELECT ..."` | Chạy SQL trên D1 local |
 
 ## Biến môi trường và bí mật
@@ -65,17 +64,11 @@ Muốn chạy đúng runtime Workers (workerd) trên máy: `npm run preview` (bu
 - **Production**: bí mật đặt bằng `npx wrangler secret put AUTH_SECRET`; biến thường đặt trong `vars` của `wrangler.jsonc` (vd `R2_PUBLIC_URL`) hoặc Dashboard. Khi deploy bằng `npm run deploy -- --keep-vars` thì giữ các biến đã đặt trên Dashboard.
 - Xem danh sách đầy đủ trong [.env.example](.env.example).
 
-## Thử nghiệm với D1 / R2 thật khi chưa nâng gói Workers Paid
+## Chạy local với D1 / R2 thật
 
-Gói **Workers Free** giới hạn 3 MiB bundle nén nên `npm run deploy` sẽ bị từ chối (dự án ~4,2 MiB). D1 và R2 thì dùng được ngay ở gói Free, nên có thể chạy Worker **trên máy** nhưng đọc/ghi dữ liệu thật trên Cloudflare:
-
-```bash
-npx wrangler login
-npm run db:migrate:remote        # tạo bảng trên D1 thật
-npm run db:seed:remote           # dữ liệu mẫu + tài khoản admin
-```
-
-Rồi trong `wrangler.jsonc` đổi `"remote": false` → `"remote": true` ở binding `DB` (và `R2_BUCKET` nếu muốn upload vào bucket thật; khi đó điền `R2_PUBLIC_URL` thật vào `.dev.vars`). Chạy `npm run preview` (http://localhost:8787, đúng runtime workerd) hoặc `npm run dev`. Khi nâng lên Workers Paid thì tắt `remote` lại và `npm run deploy`.
+Trong `wrangler.jsonc`, binding `DB` và `R2_BUCKET` có cờ `"remote": true|false`:
+- `true`: `npm run dev` / `npm run preview` đọc–ghi thẳng dữ liệu thật trên Cloudflare (cần `npx wrangler login`; điền `R2_PUBLIC_URL` thật trong `.dev.vars`).
+- `false`: dùng bản giả lập trong `.wrangler/state` (chạy `npm run db:migrate && npm run db:seed` lần đầu; để trống `R2_PUBLIC_URL` trong `.dev.vars`).
 
 ## Triển khai lên Cloudflare (lần đầu)
 
@@ -96,9 +89,15 @@ npx wrangler secret put AUTH_SECRET          # chuỗi ngẫu nhiên ≥ 32 ký 
 npm run db:migrate:remote
 npm run db:seed:remote                       # đổi SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD trong .env trước khi chạy
 
-# 5. Đặt NEXT_PUBLIC_SITE_URL đúng tên miền (trong .env.production hoặc .env) rồi deploy
+# 5. Deploy lần đầu (wrangler in ra URL dạng https://niji-xkld.<tên-tài-khoản>.workers.dev)
+npm run deploy
+
+# 6. Ghi URL thật vào .env.production rồi deploy lại để sitemap/Open Graph/JSON-LD dùng đúng địa chỉ
+echo 'NEXT_PUBLIC_SITE_URL="https://niji-xkld.<tên-tài-khoản>.workers.dev"' > .env.production
 npm run deploy
 ```
+
+Khi gắn tên miền riêng (Workers & Pages → Settings → Domains & Routes), sửa `NEXT_PUBLIC_SITE_URL` trong `.env.production` và deploy lại.
 
 Sau đó gắn tên miền cho Worker (Workers & Pages → Settings → Domains & Routes). Để `next/image` tối ưu ảnh trên production, bật **Images → Transformations** cho zone trong Dashboard.
 
@@ -109,18 +108,17 @@ Kết nối repo GitHub/GitLab trong Cloudflare (Workers Builds): build command 
 ### Cập nhật schema database
 
 ```bash
-# sửa prisma/schema.prisma
-npm run db:generate
-npm run db:migration -- them-truong-x    # sinh migrations/000N_them_truong_x.sql (so với D1 local)
+# sửa src/db/schema.ts
+npm run db:migration -- them-truong-x    # drizzle-kit diff với snapshot → migrations/000N_them_truong_x.sql
 npm run db:migrate                       # áp dụng local
 npm run db:migrate:remote                # áp dụng production
 ```
 
 ## Giới hạn cần biết
 
-- **Kích thước Worker**: bundle (gồm Prisma query compiler WASM) vượt mức 3 MiB nén của gói Workers Free → cần **Workers Paid** (10 MiB). Xem con số thực tế bằng `npx wrangler deploy --dry-run --outdir=.wrangler/dry-run`.
-- **CPU khi đăng nhập**: băm PBKDF2 100.000 vòng tốn vài chục ms CPU, vượt giới hạn 10 ms của gói Free. Gói Paid đủ dư; nếu buộc dùng Free hãy giảm `PASSWORD_HASH_ITERATIONS` (mật khẩu cũ vẫn kiểm tra được vì số vòng lưu kèm hash).
-- **D1 không có transaction**: Prisma chạy từng câu lệnh riêng lẻ.
+- **Kích thước Worker**: gói Workers Free giới hạn 3 MiB nén; hiện bundle ~2,7 MiB nhờ Drizzle (thay Prisma), editor tải client-only và proxy gọn. Thêm thư viện mới thì kiểm tra lại bằng `npx wrangler deploy --dry-run --outdir=.wrangler/dry-run`.
+- **CPU khi đăng nhập**: băm PBKDF2 50.000 vòng (~4–8 ms), nằm trong giới hạn 10 ms CPU của gói Free; hash cũ với số vòng khác được tự nâng cấp khi đăng nhập thành công. Đăng nhập sai bị giới hạn 5 lần/phút mỗi IP.
+- **D1 không có transaction tương tác**: nhiều câu lệnh cần nguyên tử thì dùng `db.batch([...])` (xem docs/DB-DRIZZLE.md).
 - **Không có ISR**: các trang công khai render động mỗi request (D1 nhanh, Worker chạy sát người dùng). Muốn cache thêm, dùng Cache Rules của Cloudflare hoặc bật incremental cache R2 theo tài liệu OpenNext.
 - **Ảnh upload** được thu nhỏ (≤ 1920px) và chuyển WebP ngay trên trình duyệt trước khi gửi, vì Workers không chạy được thư viện xử lý ảnh.
 - **Rate limiting** của Workers tính theo từng PoP, là biện pháp mềm; honeypot vẫn hoạt động.

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { eq } from "drizzle-orm";
+import { db, trainingPrograms } from "@/db";
 import { PROGRAM_TYPE_LABELS } from "@/lib/constants";
 import { PageHeader } from "@/components/admin/page-header";
 import { ActiveBadge } from "@/components/admin/status-badge";
@@ -14,7 +15,7 @@ export const metadata: Metadata = { title: "Chỉnh sửa chương trình đào 
 
 export default async function EditProgramPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const program = await prisma.trainingProgram.findUnique({ where: { id } });
+  const program = await db.query.trainingPrograms.findFirst({ where: eq(trainingPrograms.id, id) });
   if (!program) notFound();
 
   const initialData: ProgramFormInitialData = {

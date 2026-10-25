@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import type { Setting } from "@/generated/prisma/client";
+import type { Setting } from "@/db/types";
 import { settingsSchema, type SettingsFormValues } from "@/lib/validations/settings";
 import { updateSettings } from "@/actions/settings";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";

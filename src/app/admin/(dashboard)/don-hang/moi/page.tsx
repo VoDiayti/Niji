@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { asc } from "drizzle-orm";
+import { db, jobOrders, markets } from "@/db";
 import { PageHeader } from "@/components/admin/page-header";
 import { JobForm } from "@/components/admin/jobs/job-form";
 import { Button } from "@/components/ui/button";
@@ -10,9 +11,9 @@ export const metadata: Metadata = { title: "Thêm đơn hàng" };
 export const dynamic = "force-dynamic";
 
 export default async function NewJobPage() {
-  const [markets, industryRows] = await Promise.all([
-    prisma.market.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
-    prisma.jobOrder.findMany({ distinct: ["industry"], select: { industry: true }, orderBy: { industry: "asc" } }),
+  const [marketOptions, industryRows] = await Promise.all([
+    db.select({ id: markets.id, name: markets.name }).from(markets).orderBy(asc(markets.order), asc(markets.name)),
+    db.selectDistinct({ industry: jobOrders.industry }).from(jobOrders).orderBy(asc(jobOrders.industry)),
   ]);
 
   return (
@@ -26,7 +27,7 @@ export default async function NewJobPage() {
           </Button>
         }
       />
-      <JobForm markets={markets} industries={industryRows.map((r) => r.industry)} />
+      <JobForm markets={marketOptions} industries={industryRows.map((r) => r.industry)} />
     </>
   );
 }

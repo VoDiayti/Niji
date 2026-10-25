@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalLink, Image as ImageIcon, Pencil, Plus } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { and, asc, count, desc, eq, like } from "drizzle-orm";
+import { db, trainingPrograms } from "@/db";
 import { ADMIN_PAGE_SIZE, PROGRAM_TYPE_LABELS } from "@/lib/constants";
 import { deleteProgram } from "@/actions/programs";
-import type { Prisma } from "@/generated/prisma/client";
-import type { ProgramType } from "@/generated/prisma/enums";
+import type { ProgramType } from "@/db/enums";
 import { PageHeader } from "@/components/admin/page-header";
 import { SearchInput, UrlParamSelect } from "@/components/admin/url-filters";
 import { ListPagination } from "@/components/admin/list-pagination";
@@ -30,20 +30,17 @@ export default async function ProgramsPage({ searchParams }: { searchParams: Pro
   const page = Math.max(1, Number(sp.page) || 1);
   const type = isProgramType(sp.type) ? sp.type : undefined;
 
-  const where: Prisma.TrainingProgramWhereInput = {
-    ...(q ? { title: { contains: q } } : {}),
-    ...(type ? { type } : {}),
-  };
+  const where = and(q ? like(trainingPrograms.title, `%${q}%`) : undefined, type ? eq(trainingPrograms.type, type) : undefined);
 
-  const [programs, total] = await prisma.$transaction([
-    prisma.trainingProgram.findMany({
+  const [programs, [{ total }]] = await Promise.all([
+    db.query.trainingPrograms.findMany({
       where,
-      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-      skip: (page - 1) * ADMIN_PAGE_SIZE,
-      take: ADMIN_PAGE_SIZE,
-      select: { id: true, title: true, slug: true, type: true, image: true, duration: true, tuition: true, order: true, isActive: true },
+      orderBy: [asc(trainingPrograms.order), desc(trainingPrograms.createdAt)],
+      limit: ADMIN_PAGE_SIZE,
+      offset: (page - 1) * ADMIN_PAGE_SIZE,
+      columns: { id: true, title: true, slug: true, type: true, image: true, duration: true, tuition: true, order: true, isActive: true },
     }),
-    prisma.trainingProgram.count({ where }),
+    db.select({ total: count() }).from(trainingPrograms).where(where),
   ]);
   const totalPages = Math.ceil(total / ADMIN_PAGE_SIZE);
   const hasFilters = Boolean(q || type);

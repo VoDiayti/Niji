@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight, Phone } from "lucide-react";
-import type { Banner } from "@/generated/prisma/client";
+import type { Banner } from "@/db/types";
 import { telHref } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GraduationCap, Languages, Wrench } from "lucide-react";
-import type { ProgramType } from "@/generated/prisma/enums";
+import type { ProgramType } from "@/db/enums";
 import { getSettings } from "@/lib/queries/settings";
 import { getActivePrograms } from "@/lib/queries/programs";
 import { PROGRAM_TYPE_LABELS } from "@/lib/constants";

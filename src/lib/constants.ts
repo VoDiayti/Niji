@@ -1,5 +1,5 @@
 // Nhãn tiếng Việt cho các enum trong database + dữ liệu dùng chung
-import type { Gender, JobStatus, LeadStatus, LeadType, PostStatus, ProgramType, Role } from "@/generated/prisma/enums";
+import type { Gender, JobStatus, LeadStatus, LeadType, PostStatus, ProgramType, Role } from "@/db/enums";
 
 export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: "Quản trị viên",

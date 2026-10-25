@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Pencil, Plus } from "lucide-react";
-import type { Prisma } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
+import { and, asc, count, eq, like, or } from "drizzle-orm";
+import { db, jobOrders, markets } from "@/db";
 import { ADMIN_PAGE_SIZE } from "@/lib/constants";
 import { deleteMarket, toggleMarketActive, toggleMarketFeatured } from "@/actions/markets";
 import { PageHeader } from "@/components/admin/page-header";
@@ -29,20 +29,33 @@ export default async function MarketsPage({ searchParams }: { searchParams: Sear
   const active = first(sp.active);
   const page = Math.max(1, Number(first(sp.page)) || 1);
 
-  const where: Prisma.MarketWhereInput = {
-    ...(q ? { OR: [{ name: { contains: q } }, { slug: { contains: q.toLowerCase() } }] } : {}),
-    ...(active === "true" ? { isActive: true } : active === "false" ? { isActive: false } : {}),
-  };
+  const where = and(
+    q ? or(like(markets.name, `%${q}%`), like(markets.slug, `%${q.toLowerCase()}%`)) : undefined,
+    active === "true" ? eq(markets.isActive, true) : active === "false" ? eq(markets.isActive, false) : undefined
+  );
 
-  const [markets, total] = await prisma.$transaction([
-    prisma.market.findMany({
-      where,
-      orderBy: [{ order: "asc" }, { name: "asc" }],
-      skip: (page - 1) * ADMIN_PAGE_SIZE,
-      take: ADMIN_PAGE_SIZE,
-      include: { _count: { select: { jobOrders: true } } },
-    }),
-    prisma.market.count({ where }),
+  // Số đơn hàng của từng thị trường = leftJoin + count (thay cho _count của Prisma)
+  const [items, [{ total }]] = await Promise.all([
+    db
+      .select({
+        id: markets.id,
+        name: markets.name,
+        slug: markets.slug,
+        countryCode: markets.countryCode,
+        image: markets.image,
+        isFeatured: markets.isFeatured,
+        isActive: markets.isActive,
+        order: markets.order,
+        jobCount: count(jobOrders.id),
+      })
+      .from(markets)
+      .leftJoin(jobOrders, eq(jobOrders.marketId, markets.id))
+      .where(where)
+      .groupBy(markets.id)
+      .orderBy(asc(markets.order), asc(markets.name))
+      .limit(ADMIN_PAGE_SIZE)
+      .offset((page - 1) * ADMIN_PAGE_SIZE),
+    db.select({ total: count() }).from(markets).where(where),
   ]);
   const totalPages = Math.ceil(total / ADMIN_PAGE_SIZE);
   const hasFilter = Boolean(q || active);
@@ -72,7 +85,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Sear
         />
       </div>
 
-      {markets.length === 0 ? (
+      {items.length === 0 ? (
         <EmptyState
           title={hasFilter ? "Không tìm thấy thị trường phù hợp" : "Chưa có thị trường"}
           description={hasFilter ? "Thử đổi từ khóa hoặc bộ lọc." : "Thêm thị trường đầu tiên (Nhật Bản, Hàn Quốc, Đài Loan...)."}
@@ -93,7 +106,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Sear
               </TableRow>
             </TableHeader>
             <TableBody>
-              {markets.map((market) => (
+              {items.map((market) => (
                 <TableRow key={market.id}>
                   <TableCell><Thumbnail src={market.image} className="w-20" /></TableCell>
                   <TableCell className="max-w-72 whitespace-normal">
@@ -104,9 +117,9 @@ export default async function MarketsPage({ searchParams }: { searchParams: Sear
                     <p className="text-xs text-muted-foreground">/thi-truong/{market.slug}</p>
                   </TableCell>
                   <TableCell className="hidden text-center md:table-cell">
-                    {market._count.jobOrders > 0 ? (
+                    {market.jobCount > 0 ? (
                       <Link href={`/admin/don-hang?market=${market.id}`}>
-                        <Badge variant="secondary">{market._count.jobOrders} đơn</Badge>
+                        <Badge variant="secondary">{market.jobCount} đơn</Badge>
                       </Link>
                     ) : (
                       <span className="text-muted-foreground">0</span>
@@ -128,8 +141,8 @@ export default async function MarketsPage({ searchParams }: { searchParams: Sear
                         action={deleteMarket.bind(null, market.id)}
                         title={`Xóa thị trường "${market.name}"?`}
                         description={
-                          market._count.jobOrders > 0
-                            ? `Thị trường đang có ${market._count.jobOrders} đơn hàng. Hãy xóa hoặc chuyển đơn hàng sang thị trường khác trước.`
+                          market.jobCount > 0
+                            ? `Thị trường đang có ${market.jobCount} đơn hàng. Hãy xóa hoặc chuyển đơn hàng sang thị trường khác trước.`
                             : "Các đăng ký tư vấn liên quan sẽ không còn gắn với thị trường này. Hành động không thể hoàn tác."
                         }
                       />

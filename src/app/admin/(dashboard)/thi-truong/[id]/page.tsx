@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { count, eq } from "drizzle-orm";
+import { db, jobOrders, markets } from "@/db";
 import { formatDateTime } from "@/lib/format";
 import { PageHeader } from "@/components/admin/page-header";
 import { MarketForm } from "@/components/admin/markets/market-form";
@@ -13,14 +14,17 @@ export const dynamic = "force-dynamic";
 
 export default async function EditMarketPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const market = await prisma.market.findUnique({ where: { id }, include: { _count: { select: { jobOrders: true } } } });
+  const [market, [{ jobCount }]] = await Promise.all([
+    db.query.markets.findFirst({ where: eq(markets.id, id) }),
+    db.select({ jobCount: count() }).from(jobOrders).where(eq(jobOrders.marketId, id)),
+  ]);
   if (!market) notFound();
 
   return (
     <>
       <PageHeader
         title={market.name}
-        description={`${market._count.jobOrders} đơn hàng · Cập nhật ${formatDateTime(market.updatedAt)}`}
+        description={`${jobCount} đơn hàng · Cập nhật ${formatDateTime(market.updatedAt)}`}
         actions={
           <>
             <Button variant="outline" asChild>

@@ -1,18 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { and, eq, ne } from "drizzle-orm";
+import { categories, db, posts } from "@/db";
 import { assertUser } from "@/lib/auth-guard";
 import { fail, ok, safeAction, zodFail, type ActionResult } from "@/lib/action-result";
 import { slugify, uniqueSlug } from "@/lib/slug";
 import { categorySchema } from "@/lib/validations/category";
 
 async function categorySlugExists(slug: string, excludeId?: string): Promise<boolean> {
-  const found = await prisma.category.findFirst({
-    where: { slug, ...(excludeId ? { id: { not: excludeId } } : {}) },
-    select: { id: true },
+  const found = await db.query.categories.findFirst({
+    columns: { id: true },
+    where: and(eq(categories.slug, slug), excludeId ? ne(categories.id, excludeId) : undefined),
   });
-  return found !== null;
+  return found !== undefined;
 }
 
 function revalidateCategoryPaths(slugs: (string | null | undefined)[]) {
@@ -31,9 +32,10 @@ export async function createCategory(input: unknown): Promise<ActionResult<{ id:
     if (!parsed.success) return zodFail(parsed.error);
     const d = parsed.data;
     const slug = await uniqueSlug(slugify(d.slug || d.name) || "chuyen-muc", (s) => categorySlugExists(s));
-    const category = await prisma.category.create({
-      data: { name: d.name, slug, description: d.description || null, order: Number(d.order) || 0, isActive: d.isActive },
-    });
+    const [category] = await db
+      .insert(categories)
+      .values({ name: d.name, slug, description: d.description || null, order: Number(d.order) || 0, isActive: d.isActive })
+      .returning({ id: categories.id, slug: categories.slug });
     revalidateCategoryPaths([category.slug]);
     return ok({ id: category.id }, "Đã tạo chuyên mục");
   });
@@ -45,28 +47,33 @@ export async function updateCategory(id: string, input: unknown): Promise<Action
     const parsed = categorySchema.safeParse(input);
     if (!parsed.success) return zodFail(parsed.error);
     const d = parsed.data;
-    const current = await prisma.category.findUnique({ where: { id }, select: { slug: true } });
+    const current = await db.query.categories.findFirst({ columns: { slug: true }, where: eq(categories.id, id) });
     if (!current) return fail("Chuyên mục không tồn tại hoặc đã bị xóa.");
     const slug = await uniqueSlug(slugify(d.slug || d.name) || "chuyen-muc", (s) => categorySlugExists(s, id));
-    const category = await prisma.category.update({
-      where: { id },
-      data: { name: d.name, slug, description: d.description || null, order: Number(d.order) || 0, isActive: d.isActive },
-    });
+    const [category] = await db
+      .update(categories)
+      .set({ name: d.name, slug, description: d.description || null, order: Number(d.order) || 0, isActive: d.isActive })
+      .where(eq(categories.id, id))
+      .returning({ id: categories.id, slug: categories.slug });
     revalidateCategoryPaths([current.slug, category.slug]);
     // Bài viết thuộc chuyên mục cũng cần làm mới (tên chuyên mục hiển thị trong bài)
-    const posts = await prisma.post.findMany({ where: { categoryId: id }, select: { slug: true } });
-    for (const p of posts) revalidatePath(`/tin-tuc/${p.slug}`);
+    const related = await db.query.posts.findMany({ columns: { slug: true }, where: eq(posts.categoryId, id) });
+    for (const p of related) revalidatePath(`/tin-tuc/${p.slug}`);
     return ok({ id: category.id }, "Đã lưu chuyên mục");
   });
 }
 
-/** Xóa chuyên mục – bài viết thuộc chuyên mục sẽ về "chưa phân loại" (onDelete: SetNull) */
+/** Xóa chuyên mục – bài viết thuộc chuyên mục sẽ về "chưa phân loại" (FK ON DELETE SET NULL) */
 export async function deleteCategory(id: string): Promise<ActionResult> {
   return safeAction(async () => {
     await assertUser();
-    const category = await prisma.category.findUnique({ where: { id }, select: { slug: true, posts: { select: { slug: true } } } });
+    const category = await db.query.categories.findFirst({
+      columns: { slug: true },
+      where: eq(categories.id, id),
+      with: { posts: { columns: { slug: true } } },
+    });
     if (!category) return fail("Chuyên mục không tồn tại hoặc đã bị xóa.");
-    await prisma.category.delete({ where: { id } });
+    await db.delete(categories).where(eq(categories.id, id));
     revalidateCategoryPaths([category.slug]);
     for (const p of category.posts) revalidatePath(`/tin-tuc/${p.slug}`);
     return ok(undefined, "Đã xóa chuyên mục");

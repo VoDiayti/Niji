@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
-import type { Banner } from "@/generated/prisma/client";
+import type { Banner } from "@/db/types";
 import { bannerSchema, type BannerFormValues } from "@/lib/validations/banner";
 import { createBanner, updateBanner } from "@/actions/banners";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";

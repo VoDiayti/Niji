@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Pencil, Plus } from "lucide-react";
-import type { Prisma } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
+import { and, asc, count, desc, eq, like, or } from "drizzle-orm";
+import { db, jobOrders, markets } from "@/db";
 import { ADMIN_PAGE_SIZE, GENDER_LABELS, JOB_STATUS_LABELS } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
 import { deleteJob, toggleJobFeatured } from "@/actions/jobs";
@@ -32,32 +32,24 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
   const industry = first(sp.industry) ?? "";
   const page = Math.max(1, Number(first(sp.page)) || 1);
 
-  const where: Prisma.JobOrderWhereInput = {
-    ...(q
-      ? {
-          OR: [
-            { title: { contains: q } },
-            { industry: { contains: q } },
-            { location: { contains: q } },
-          ],
-        }
-      : {}),
-    ...(market ? { marketId: market } : {}),
-    ...(status === "OPEN" || status === "CLOSED" ? { status } : {}),
-    ...(industry ? { industry } : {}),
-  };
+  const where = and(
+    q ? or(like(jobOrders.title, `%${q}%`), like(jobOrders.industry, `%${q}%`), like(jobOrders.location, `%${q}%`)) : undefined,
+    market ? eq(jobOrders.marketId, market) : undefined,
+    status === "OPEN" || status === "CLOSED" ? eq(jobOrders.status, status) : undefined,
+    industry ? eq(jobOrders.industry, industry) : undefined
+  );
 
-  const [jobs, total, markets, industryRows] = await Promise.all([
-    prisma.jobOrder.findMany({
+  const [jobs, [{ total }], marketOptions, industryRows] = await Promise.all([
+    db.query.jobOrders.findMany({
       where,
-      orderBy: [{ createdAt: "desc" }],
-      skip: (page - 1) * ADMIN_PAGE_SIZE,
-      take: ADMIN_PAGE_SIZE,
-      include: { market: { select: { id: true, name: true } } },
+      orderBy: [desc(jobOrders.createdAt)],
+      limit: ADMIN_PAGE_SIZE,
+      offset: (page - 1) * ADMIN_PAGE_SIZE,
+      with: { market: { columns: { id: true, name: true } } },
     }),
-    prisma.jobOrder.count({ where }),
-    prisma.market.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
-    prisma.jobOrder.findMany({ distinct: ["industry"], select: { industry: true }, orderBy: { industry: "asc" } }),
+    db.select({ total: count() }).from(jobOrders).where(where),
+    db.select({ id: markets.id, name: markets.name }).from(markets).orderBy(asc(markets.order), asc(markets.name)),
+    db.selectDistinct({ industry: jobOrders.industry }).from(jobOrders).orderBy(asc(jobOrders.industry)),
   ]);
   const totalPages = Math.ceil(total / ADMIN_PAGE_SIZE);
   const hasFilter = Boolean(q || market || status || industry);
@@ -76,7 +68,7 @@ export default async function JobsPage({ searchParams }: { searchParams: SearchP
 
       <div className="mb-4 flex flex-wrap gap-2">
         <SearchInput placeholder="Tìm theo tiêu đề, ngành, nơi làm việc..." className="w-full sm:w-72" />
-        <UrlParamSelect param="market" allLabel="Tất cả thị trường" placeholder="Thị trường" options={markets.map((m) => ({ value: m.id, label: m.name }))} />
+        <UrlParamSelect param="market" allLabel="Tất cả thị trường" placeholder="Thị trường" options={marketOptions.map((m) => ({ value: m.id, label: m.name }))} />
         <UrlParamSelect
           param="status"
           allLabel="Tất cả trạng thái"

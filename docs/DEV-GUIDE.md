@@ -9,7 +9,7 @@ Tài liệu này mô tả stack, cấu trúc thư mục và các quy ước bắ
 |---|---|---|
 | Next.js | 16.4 (App Router) | `params`/`searchParams` là **Promise**; `src/proxy.ts` thay cho middleware; dev dùng Turbopack, build production cũng Turbopack |
 | Hosting | **Cloudflare Workers** qua `@opennextjs/cloudflare` | `wrangler.jsonc`, `open-next.config.ts`; binding đọc bằng `getCloudflareContext()` |
-| Database | **Cloudflare D1** (SQLite) + Prisma 7.10 (`@prisma/adapter-d1`) | client sinh ra tại `src/generated/prisma` với `runtime = "cloudflare"`; migration là file SQL trong `migrations/` áp dụng bằng wrangler |
+| Database | **Cloudflare D1** (SQLite) + **Drizzle ORM** (`drizzle-orm/d1`) | schema TS trong `src/db/schema.ts`; migration là file SQL trong `migrations/` áp dụng bằng wrangler (sinh bằng drizzle-kit). Xem docs/DB-DRIZZLE.md |
 | Ảnh | **Cloudflare R2** (binding `R2_BUCKET`) | `src/lib/storage.ts`; URL công khai qua `R2_PUBLIC_URL` hoặc route `/api/media/<key>` |
 | Tối ưu ảnh | Cloudflare Images (binding `IMAGES`) | `next/image` dùng như bình thường; khi `next dev` dùng optimizer của Next |
 | Rate limit | binding `LEAD_RATE_LIMITER` (5 lượt/60s/IP) | `src/lib/rate-limit.ts` có fallback bộ nhớ khi không có binding |
@@ -31,10 +31,13 @@ Package.json có `"type": "module"`.
 wrangler.jsonc                Cấu hình Worker: binding DB (D1), R2_BUCKET, IMAGES, LEAD_RATE_LIMITER, vars
 open-next.config.ts           Cấu hình OpenNext (hiện không dùng cache ISR)
 worker-configuration.d.ts     Kiểu CloudflareEnv sinh bởi `npm run cf-typegen` (gitignored)
-migrations/NNNN_*.sql         Migration D1 (sinh bằng `npm run db:migration -- ten`)
-prisma/schema.prisma          Schema (provider sqlite) – KHÔNG sửa khi chưa được yêu cầu
-prisma/seed.ts                Sinh prisma/seed.sql rồi wrangler nạp vào D1 (npm run db:seed)
-prisma.config.ts              Cấu hình Prisma CLI (URL chỉ hình thức)
+migrations/NNNN_*.sql         Migration D1 (sinh bằng `npm run db:migration -- ten`, áp dụng bằng wrangler)
+drizzle/meta                  Snapshot schema của drizzle-kit (commit cùng code)
+drizzle.config.ts             Cấu hình drizzle-kit (chỉ sinh SQL, không kết nối DB)
+src/db/schema.ts              Schema Drizzle (bảng, cột, quan hệ) – KHÔNG sửa khi chưa được yêu cầu
+src/db/index.ts               `db` (Drizzle + D1 binding) → import { db, posts, ... } from "@/db"
+src/db/types.ts, enums.ts     Kiểu hàng (Post, Market...) và enum (PostStatus...)
+db/seed.ts                    Sinh db/seed.sql rồi wrangler nạp vào D1 (npm run db:seed)
 .env / .dev.vars              Biến local cho Next / cho runtime Workers (xem README)
 src/app/layout.tsx            Root layout (font Be Vietnam Pro, Toaster, TooltipProvider)
 src/app/(public)/**           Trang công khai (render động mỗi request: `export const dynamic = "force-dynamic"`)
@@ -45,7 +48,6 @@ src/app/api/admin/upload      POST upload ảnh lên R2 (đã có)
 src/app/api/media/[...key]    GET phục vụ file từ R2 khi chưa có R2_PUBLIC_URL
 src/actions/*.ts              Server actions ("use server") theo module
 src/lib/cloudflare.ts         getCfEnv() / getCfEnvAsync() / getConfigVar() – truy cập binding
-src/lib/prisma.ts             `prisma` (proxy lười tới PrismaClient + PrismaD1) → import { prisma } from "@/lib/prisma"
 src/lib/auth-guard.ts         getSessionUser / requireUser / requireAdmin / assertUser / assertAdmin
 src/lib/auth-secret.ts        getAuthSecret() đọc AUTH_SECRET theo request
 src/lib/password.ts           hashPassword / verifyPassword (PBKDF2)
@@ -67,12 +69,11 @@ src/components/admin/*        page-header, submit-button, confirm-delete-button,
                               url-filters (SearchInput, UrlParamSelect), status-badge, empty-state,
                               image-upload-field, sidebar, header, nav.ts, login-form + thư mục theo module
 src/components/public/*       component trang công khai
-src/generated/prisma/*        Prisma client (sinh tự động, gitignored)
 public/images/*.jpg           24 ảnh minh họa dùng trong seed, public/logo.svg, logo-full.svg, og-default.jpg
 public/_headers               Cache dài hạn cho /_next/static
 ```
 
-## 3. Database (Prisma + D1) – tóm tắt model
+## 3. Database (Drizzle + D1) – tóm tắt model
 
 Enum: `Role(ADMIN|EDITOR)`, `PostStatus(DRAFT|PUBLISHED|SCHEDULED)`, `JobStatus(OPEN|CLOSED)`,
 `Gender(MALE|FEMALE|ANY)`, `LeadType(CONSULTATION|APPLICATION|CONTACT)`,
@@ -94,15 +95,15 @@ Enum: `Role(ADMIN|EDITOR)`, `PostStatus(DRAFT|PUBLISHED|SCHEDULED)`, `JobStatus(
 - `Setting` (1 dòng, id=1): companyName, shortName, slogan, logo, licenseNumber, licenseIssuer, taxCode, hotline, zalo, email, address, mapEmbedUrl, workingHours, facebook, youtube, tiktok, messenger, foundedYear, statWorkers, statYears, statPartners, statMarkets, aboutShort, aboutContent(HTML), vision, mission, metaTitle, metaDescription, ogImage
 
 Giới hạn của SQLite/D1 cần nhớ:
-- Không có kiểu mảng → lưu JSON string. Không có `mode: "insensitive"` trong filter (`contains` của SQLite đã không phân biệt hoa thường với ký tự ASCII).
-- Không có transaction: `$transaction` chạy tuần tự từng câu lệnh.
-- Enum được lưu dạng TEXT; Boolean dạng 0/1; DateTime dạng chuỗi ISO.
+- Không có kiểu mảng → lưu JSON string. Tìm kiếm bằng `like` (không phân biệt hoa thường với ký tự ASCII).
+- Không có transaction tương tác: dùng `db.batch([...])` cho nhiều câu lệnh nguyên tử.
+- Enum lưu dạng TEXT; Boolean dạng 0/1 (Drizzle trả về true/false); DateTime dạng chuỗi ISO (Drizzle trả về `Date`).
 
-Import kiểu/enum:
+Cách viết truy vấn (danh sách + đếm, quan hệ, nhiều-nhiều, upsert...): xem **docs/DB-DRIZZLE.md**.
 ```ts
-import type { Post, Market } from "@/generated/prisma/client";
-import { PostStatus, LeadStatus } from "@/generated/prisma/enums"; // enum – dùng được cả client component
-import { Prisma } from "@/generated/prisma/client";                // Prisma.PostWhereInput ...
+import { db, posts, markets } from "@/db";
+import type { Post, Market } from "@/db/types";
+import { PostStatus, LeadStatus } from "@/db/enums"; // enum – dùng được cả client component
 ```
 
 **Quy tắc hiển thị bài viết công khai:** `status IN (PUBLISHED, SCHEDULED) AND publishedAt <= now()`.
@@ -110,9 +111,8 @@ import { Prisma } from "@/generated/prisma/client";                // Prisma.Pos
 
 ### Sửa schema
 ```bash
-# sửa prisma/schema.prisma
-npm run db:generate
-npm run db:migration -- ten-thay-doi   # sinh migrations/000N_ten_thay_doi.sql (diff với D1 local)
+# sửa src/db/schema.ts
+npm run db:migration -- ten-thay-doi   # drizzle-kit diff với snapshot → migrations/000N_ten_thay_doi.sql
 npm run db:migrate                     # áp dụng local;  npm run db:migrate:remote cho production
 ```
 
@@ -122,6 +122,7 @@ npm run db:migrate                     # áp dụng local;  npm run db:migrate:r
 - Server Component mặc định; chỉ thêm `"use client"` khi cần state/hooks/sự kiện.
 - `params`, `searchParams` là Promise: `const { slug } = await params;`
 - Mọi trang công khai `export const dynamic = "force-dynamic"` (không ISR – OpenNext chưa cấu hình cache); `revalidatePath` trong action vẫn gọi được nhưng không bắt buộc.
+- Trình soạn thảo `RichTextEditor` chỉ tải ở client (dynamic, ssr:false) – không import `rich-text-editor-impl.tsx` trực tiếp.
 - Truy cập binding Cloudflare chỉ trong lúc xử lý request (server component động, route handler, server action, proxy). Trang được prerender lúc build không được chạm DB – nếu cần thì `await connection()` (xem `src/app/not-found.tsx`).
 - Toàn bộ chữ trên giao diện bằng **tiếng Việt có dấu**. Slug URL tiếng Việt không dấu.
 - Responsive mobile-first; nút CTA to, dễ bấm (tối thiểu h-11 trên mobile).
@@ -132,7 +133,7 @@ npm run db:migrate                     # áp dụng local;  npm run db:migrate:r
 ```ts
 "use server";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { db, posts } from "@/db";
 import { assertUser, assertAdmin } from "@/lib/auth-guard";
 import { ok, fail, zodFail, safeAction, type ActionResult } from "@/lib/action-result";
 import { postSchema } from "@/lib/validations/post";
@@ -142,7 +143,7 @@ export async function createPost(input: unknown): Promise<ActionResult<{ id: str
     const user = await assertUser();                 // hoặc assertAdmin() cho chức năng admin-only
     const parsed = postSchema.safeParse(input);
     if (!parsed.success) return zodFail(parsed.error);
-    const post = await prisma.post.create({ data: { ...parsed.data, authorId: user.id } });
+    const [post] = await db.insert(posts).values({ ...parsed.data, authorId: user.id }).returning();
     revalidatePath("/tin-tuc");
     return ok({ id: post.id }, "Đã tạo bài viết");
   });
@@ -184,7 +185,7 @@ export async function createPost(input: unknown): Promise<ActionResult<{ id: str
 - Tài khoản: `admin@example.com / Admin@12345` (ADMIN), `bientap@niji-xkld.vn / Editor@12345` (EDITOR).
 - `npm run dev` (Turbopack, binding giả lập) – cổng 3000 có thể bị chiếm trên máy dev, dùng `npm run dev -- -p 3100`.
 - `npm run preview` chạy đúng runtime Workers tại http://localhost:8787 (cần `.dev.vars` có `AUTH_SECRET` và `AUTH_URL=http://localhost:8787`).
-- Kiểm tra bắt buộc trước khi báo hoàn thành: `npx tsc --noEmit`, `npx eslint <thư mục>`; kích thước Worker: `npx wrangler deploy --dry-run --outdir=.wrangler/dry-run` (gzip phải < 10 MiB).
+- Kiểm tra bắt buộc trước khi báo hoàn thành: `npx tsc --noEmit`, `npx eslint <thư mục>`; kích thước Worker: `npx wrangler deploy --dry-run --outdir=.wrangler/dry-run` (gzip phải < 3 MiB để chạy gói Free).
 - Đăng nhập bằng curl: `GET /api/auth/csrf` (cookie jar) → `POST /api/auth/callback/credentials` (csrfToken, email, password, redirectTo=/admin) → `GET /admin/...` kèm cookie.
 
 ## 7. Lưu ý Next 16 / Cloudflare / thư viện mới
@@ -196,5 +197,5 @@ export async function createPost(input: unknown): Promise<ActionResult<{ id: str
 - TipTap v3: `useEditorState` chỉ làm mới snapshot sau transaction đầu tiên – `RichTextEditor` đã xử lý.
 - Plugin chia sẻ Zalo chính thức cần `NEXT_PUBLIC_ZALO_OA_ID`; phần tử nút phải tạo bằng DOM thuần (xem `share-buttons.tsx`).
 - `next.config.ts` có `outputFileTracingExcludes` loại `prisma` CLI, `@prisma/dev`, `@electric-sql`, `@vercel/og`… khỏi bản build: nếu không, Turbopack kéo mọi file `.wasm` của các gói này vào Worker (bundle tăng ~15 MiB). Thêm gói mới có `.wasm` thì cân nhắc loại trừ tương tự.
-- Auth.js trong proxy: trên workerd không có `x-forwarded-proto`, Auth.js mặc định coi là HTTPS → preview HTTP cần `AUTH_URL` trong `.dev.vars`; production HTTPS không cần.
-- Workers Free plan: giới hạn 3 MiB nén và 10 ms CPU – dự án này cần Workers Paid (bundle ~4,3 MiB nén; PBKDF2 khi đăng nhập tốn vài chục ms CPU).
+- Auth.js: trên workerd không có `x-forwarded-proto` nên Auth.js mặc định coi là HTTPS → preview HTTP cần `AUTH_URL` trong `.dev.vars`; production HTTPS không cần. Proxy đọc cả 2 tên cookie (`__Secure-authjs.session-token` khi HTTPS, `authjs.session-token` khi HTTP) với salt = tên cookie.
+- Workers Free plan: giới hạn 3 MiB nén và 10 ms CPU. Vì vậy dùng Drizzle thay Prisma (bỏ ~1,4 MiB WASM/JS), editor tải client-only, proxy chỉ giải mã JWT (không nạp cả NextAuth), PBKDF2 mặc định 50.000 vòng (~4–8 ms CPU). Kiểm tra bằng `npx wrangler deploy --dry-run --outdir=.wrangler/dry-run` sau mỗi lần thêm thư viện.

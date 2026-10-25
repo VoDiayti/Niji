@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
-import type { Testimonial } from "@/generated/prisma/client";
+import type { Testimonial } from "@/db/types";
 import { RATING_OPTIONS, testimonialSchema, type TestimonialFormValues } from "@/lib/validations/testimonial";
 import { createTestimonial, updateTestimonial } from "@/actions/testimonials";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";

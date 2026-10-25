@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { eq } from "drizzle-orm";
+import { db, testimonials } from "@/db";
 import { assertUser } from "@/lib/auth-guard";
 import { fail, ok, safeAction, zodFail, type ActionResult } from "@/lib/action-result";
 import { testimonialSchema, type TestimonialFormValues } from "@/lib/validations/testimonial";
@@ -31,7 +32,7 @@ export async function createTestimonial(input: unknown): Promise<ActionResult<{ 
     await assertUser();
     const parsed = testimonialSchema.safeParse(input);
     if (!parsed.success) return zodFail(parsed.error);
-    const item = await prisma.testimonial.create({ data: toData(parsed.data) });
+    const [item] = await db.insert(testimonials).values(toData(parsed.data)).returning({ id: testimonials.id });
     revalidateTestimonialPages();
     return ok({ id: item.id }, "Đã thêm cảm nhận");
   });
@@ -42,9 +43,9 @@ export async function updateTestimonial(id: string, input: unknown): Promise<Act
     await assertUser();
     const parsed = testimonialSchema.safeParse(input);
     if (!parsed.success) return zodFail(parsed.error);
-    const existing = await prisma.testimonial.findUnique({ where: { id }, select: { id: true } });
+    const existing = await db.query.testimonials.findFirst({ columns: { id: true }, where: eq(testimonials.id, id) });
     if (!existing) return fail("Không tìm thấy cảm nhận");
-    await prisma.testimonial.update({ where: { id }, data: toData(parsed.data) });
+    await db.update(testimonials).set(toData(parsed.data)).where(eq(testimonials.id, id));
     revalidateTestimonialPages();
     return ok({ id }, "Đã lưu cảm nhận");
   });
@@ -53,9 +54,9 @@ export async function updateTestimonial(id: string, input: unknown): Promise<Act
 export async function deleteTestimonial(id: string): Promise<ActionResult> {
   return safeAction(async () => {
     await assertUser();
-    const existing = await prisma.testimonial.findUnique({ where: { id }, select: { id: true } });
+    const existing = await db.query.testimonials.findFirst({ columns: { id: true }, where: eq(testimonials.id, id) });
     if (!existing) return fail("Không tìm thấy cảm nhận");
-    await prisma.testimonial.delete({ where: { id } });
+    await db.delete(testimonials).where(eq(testimonials.id, id));
     revalidateTestimonialPages();
     return ok(undefined, "Đã xóa cảm nhận");
   });
@@ -64,7 +65,8 @@ export async function deleteTestimonial(id: string): Promise<ActionResult> {
 export async function toggleTestimonialActive(id: string, isActive: boolean): Promise<ActionResult> {
   return safeAction(async () => {
     await assertUser();
-    await prisma.testimonial.update({ where: { id }, data: { isActive } });
+    const [row] = await db.update(testimonials).set({ isActive }).where(eq(testimonials.id, id)).returning({ id: testimonials.id });
+    if (!row) return fail("Không tìm thấy cảm nhận");
     revalidateTestimonialPages();
     return ok(undefined, isActive ? "Đã hiển thị cảm nhận" : "Đã ẩn cảm nhận");
   });

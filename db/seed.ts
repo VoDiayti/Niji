@@ -1,6 +1,6 @@
 /**
  * Sinh dữ liệu mẫu cho Cloudflare D1.
- * Script này KHÔNG kết nối database: nó tạo file prisma/seed.sql, sau đó wrangler áp dụng file đó:
+ * Script này KHÔNG kết nối database: nó tạo file db/seed.sql, sau đó wrangler áp dụng file đó:
  *   npm run db:seed          → D1 local (dùng với `next dev` / `npm run preview`)
  *   npm run db:seed:remote   → D1 production
  * ID các bản ghi được sinh ổn định theo tên nên chạy lại nhiều lần không tạo bản ghi trùng (INSERT OR IGNORE).
@@ -330,9 +330,9 @@ async function main() {
     { type: "CONSULTATION", fullName: "Đỗ Văn Long", phone: "0944556677", email: null, birthYear: 1990, hometown: "Nam Định", marketId: market("chau-au"), jobOrderId: null, message: "Hỏi đơn xây dựng Ba Lan.", status: "CANCELLED", adminNote: "Khách không nghe máy sau 3 lần gọi.", source: "/don-hang", createdAt: daysAgo(20) },
   ].map((l, i) => ({ id: sid(`lead:${i + 1}`), ...l, ipAddress: null, updatedAt: now })));
 
-  const sql = `-- File sinh tự động bởi prisma/seed.ts (${now.toISOString()}). Không sửa tay.\n${statements.join("\n")}\n`;
-  writeFileSync("prisma/seed.sql", sql, "utf8");
-  console.log(`Đã sinh prisma/seed.sql (${statements.length} câu lệnh). Tài khoản admin: ${adminEmail} / ${adminPassword}`);
+  const sql = `-- File sinh tự động bởi db/seed.ts (${now.toISOString()}). Không sửa tay.\n${statements.join("\n")}\n`;
+  writeFileSync("db/seed.sql", sql, "utf8");
+  console.log(`Đã sinh db/seed.sql (${statements.length} câu lệnh). Tài khoản admin: ${adminEmail} / ${adminPassword}`);
 }
 
 main().catch((error) => {

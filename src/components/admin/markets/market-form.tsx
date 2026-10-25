@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import type { Market } from "@/generated/prisma/client";
+import type { Market } from "@/db/types";
 import { slugify } from "@/lib/slug";
 import { marketSchema, type MarketFormValues } from "@/lib/validations/market";
 import { createMarket, updateMarket } from "@/actions/markets";

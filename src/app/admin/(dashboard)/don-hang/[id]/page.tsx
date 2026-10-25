@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { asc, count, eq } from "drizzle-orm";
+import { db, jobOrders, leads, markets } from "@/db";
 import { formatDateTime } from "@/lib/format";
 import { PageHeader } from "@/components/admin/page-header";
 import { JobForm } from "@/components/admin/jobs/job-form";
@@ -13,10 +14,11 @@ export const dynamic = "force-dynamic";
 
 export default async function EditJobPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [job, markets, industryRows] = await Promise.all([
-    prisma.jobOrder.findUnique({ where: { id }, include: { _count: { select: { leads: true } } } }),
-    prisma.market.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
-    prisma.jobOrder.findMany({ distinct: ["industry"], select: { industry: true }, orderBy: { industry: "asc" } }),
+  const [job, [{ leadCount }], marketOptions, industryRows] = await Promise.all([
+    db.query.jobOrders.findFirst({ where: eq(jobOrders.id, id) }),
+    db.select({ leadCount: count() }).from(leads).where(eq(leads.jobOrderId, id)),
+    db.select({ id: markets.id, name: markets.name }).from(markets).orderBy(asc(markets.order), asc(markets.name)),
+    db.selectDistinct({ industry: jobOrders.industry }).from(jobOrders).orderBy(asc(jobOrders.industry)),
   ]);
   if (!job) notFound();
 
@@ -24,13 +26,13 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
     <>
       <PageHeader
         title={job.title}
-        description={`${job._count.leads} lượt ứng tuyển · ${job.viewCount} lượt xem · Cập nhật ${formatDateTime(job.updatedAt)}`}
+        description={`${leadCount} lượt ứng tuyển · ${job.viewCount} lượt xem · Cập nhật ${formatDateTime(job.updatedAt)}`}
         actions={
           <>
             <Button variant="outline" asChild>
               <Link href="/admin/don-hang"><ArrowLeft /> Quay lại</Link>
             </Button>
-            {job._count.leads > 0 && (
+            {leadCount > 0 && (
               <Button variant="outline" asChild>
                 <Link href={`/admin/dang-ky?job=${job.id}`}>Xem ứng tuyển</Link>
               </Button>
@@ -41,7 +43,7 @@ export default async function EditJobPage({ params }: { params: Promise<{ id: st
           </>
         }
       />
-      <JobForm initialData={job} markets={markets} industries={industryRows.map((r) => r.industry)} />
+      <JobForm initialData={job} markets={marketOptions} industries={industryRows.map((r) => r.industry)} />
     </>
   );
 }

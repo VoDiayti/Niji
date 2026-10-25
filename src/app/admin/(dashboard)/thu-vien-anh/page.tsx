@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@/generated/prisma/client";
+import { count, desc, like, or } from "drizzle-orm";
+import { db, media } from "@/db";
 import { PageHeader } from "@/components/admin/page-header";
 import { SearchInput } from "@/components/admin/url-filters";
 import { ListPagination } from "@/components/admin/list-pagination";
@@ -16,19 +16,17 @@ export default async function MediaLibraryPage({ searchParams }: { searchParams:
   const q = sp.q?.trim() ?? "";
   const page = Math.max(1, Number(sp.page) || 1);
 
-  const where: Prisma.MediaWhereInput = q
-    ? { OR: [{ filename: { contains: q } }, { alt: { contains: q } }] }
-    : {};
+  const where = q ? or(like(media.filename, `%${q}%`), like(media.alt, `%${q}%`)) : undefined;
 
-  const [rows, total] = await prisma.$transaction([
-    prisma.media.findMany({
+  const [rows, [{ total }]] = await Promise.all([
+    db.query.media.findMany({
       where,
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * MEDIA_PAGE_SIZE,
-      take: MEDIA_PAGE_SIZE,
-      include: { uploadedBy: { select: { name: true } } },
+      orderBy: [desc(media.createdAt)],
+      limit: MEDIA_PAGE_SIZE,
+      offset: (page - 1) * MEDIA_PAGE_SIZE,
+      with: { uploadedBy: { columns: { name: true } } },
     }),
-    prisma.media.count({ where }),
+    db.select({ total: count() }).from(media).where(where),
   ]);
   const items = rows.map(toMediaItem);
   const totalPages = Math.ceil(total / MEDIA_PAGE_SIZE);

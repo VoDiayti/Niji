@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { count, desc, eq, like, or } from "drizzle-orm";
+import { db, media } from "@/db";
 import { assertUser } from "@/lib/auth-guard";
 import { deleteMedia } from "@/lib/upload";
 import { fail, ok, safeAction, zodFail, type ActionResult } from "@/lib/action-result";
 import { MEDIA_PAGE_SIZE, toMediaItem, type MediaItem } from "@/components/admin/media/media-types";
-import type { Prisma } from "@/generated/prisma/client";
 
 const searchSchema = z.object({
   q: z.string().trim().max(100).optional(),
@@ -24,18 +24,16 @@ export async function searchMedia(input: unknown): Promise<ActionResult<MediaSea
     if (!parsed.success) return zodFail(parsed.error);
     const q = parsed.data.q ?? "";
     const page = parsed.data.page ?? 1;
-    const where: Prisma.MediaWhereInput = q
-      ? { OR: [{ filename: { contains: q } }, { alt: { contains: q } }] }
-      : {};
-    const [rows, total] = await prisma.$transaction([
-      prisma.media.findMany({
+    const where = q ? or(like(media.filename, `%${q}%`), like(media.alt, `%${q}%`)) : undefined;
+    const [rows, [{ total }]] = await Promise.all([
+      db.query.media.findMany({
         where,
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * MEDIA_PAGE_SIZE,
-        take: MEDIA_PAGE_SIZE,
-        include: { uploadedBy: { select: { name: true } } },
+        orderBy: [desc(media.createdAt)],
+        limit: MEDIA_PAGE_SIZE,
+        offset: (page - 1) * MEDIA_PAGE_SIZE,
+        with: { uploadedBy: { columns: { name: true } } },
       }),
-      prisma.media.count({ where }),
+      db.select({ total: count() }).from(media).where(where),
     ]);
     return ok({ items: rows.map(toMediaItem), total, page, pageSize: MEDIA_PAGE_SIZE });
   });
@@ -48,11 +46,11 @@ export async function updateMediaAlt(id: string, alt: string): Promise<ActionRes
     await assertUser();
     const parsed = altSchema.safeParse(alt);
     if (!parsed.success) return zodFail(parsed.error);
-    const exists = await prisma.media.findUnique({ where: { id }, select: { id: true } });
+    const exists = await db.query.media.findFirst({ columns: { id: true }, where: eq(media.id, id) });
     if (!exists) return fail("Ảnh không tồn tại hoặc đã bị xóa.");
-    const media = await prisma.media.update({ where: { id }, data: { alt: parsed.data || null }, select: { alt: true } });
+    const [row] = await db.update(media).set({ alt: parsed.data || null }).where(eq(media.id, id)).returning({ alt: media.alt });
     revalidatePath("/admin/thu-vien-anh");
-    return ok({ alt: media.alt }, "Đã lưu mô tả ảnh");
+    return ok({ alt: row.alt }, "Đã lưu mô tả ảnh");
   });
 }
 
@@ -60,7 +58,7 @@ export async function updateMediaAlt(id: string, alt: string): Promise<ActionRes
 export async function deleteMediaAction(id: string): Promise<ActionResult> {
   return safeAction(async () => {
     await assertUser();
-    const exists = await prisma.media.findUnique({ where: { id }, select: { id: true } });
+    const exists = await db.query.media.findFirst({ columns: { id: true }, where: eq(media.id, id) });
     if (!exists) return fail("Ảnh không tồn tại hoặc đã bị xóa.");
     await deleteMedia(id);
     revalidatePath("/admin/thu-vien-anh");

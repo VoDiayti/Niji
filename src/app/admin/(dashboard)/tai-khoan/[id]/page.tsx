@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { eq } from "drizzle-orm";
+import { db, users } from "@/db";
 import { requireAdmin } from "@/lib/auth-guard";
 import { formatDateTime } from "@/lib/format";
 import { PageHeader } from "@/components/admin/page-header";
@@ -15,9 +16,9 @@ export const dynamic = "force-dynamic";
 export default async function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
   const me = await requireAdmin();
   const { id } = await params;
-  const user = await prisma.user.findUnique({
-    where: { id },
-    select: { id: true, name: true, email: true, role: true, isActive: true, lastLoginAt: true, createdAt: true },
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, id),
+    columns: { id: true, name: true, email: true, role: true, isActive: true, lastLoginAt: true, createdAt: true },
   });
   if (!user) notFound();
 

@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
-import type { Faq } from "@/generated/prisma/client";
+import type { Faq } from "@/db/types";
 import { faqSchema, type FaqFormValues } from "@/lib/validations/faq";
 import { createFaq, updateFaq } from "@/actions/faqs";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";

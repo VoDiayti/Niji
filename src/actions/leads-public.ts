@@ -2,7 +2,8 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { eq } from "drizzle-orm";
+import { db, jobOrders, leads, markets } from "@/db";
 import { leadFormSchema } from "@/lib/validations/lead";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { fail, ok, safeAction, zodFail, type ActionResult } from "@/lib/action-result";
@@ -11,7 +12,7 @@ import { fail, ok, safeAction, zodFail, type ActionResult } from "@/lib/action-r
  * Server action nhận form đăng ký tư vấn / ứng tuyển / liên hệ từ trang công khai.
  * - Validate bằng Zod (cùng schema với client)
  * - Honeypot: trường `website` có giá trị → coi là bot, trả về thành công giả
- * - Rate limit theo IP
+ * - Rate limit theo IP (binding LEAD_RATE_LIMITER của Workers, dự phòng bộ nhớ)
  */
 export async function submitLead(input: unknown): Promise<ActionResult> {
   return safeAction(async () => {
@@ -29,24 +30,22 @@ export async function submitLead(input: unknown): Promise<ActionResult> {
 
     // Kiểm tra khóa ngoại để tránh lỗi khi thị trường/đơn hàng không còn tồn tại
     const [market, jobOrder] = await Promise.all([
-      data.marketId ? prisma.market.findUnique({ where: { id: data.marketId }, select: { id: true } }) : null,
-      data.jobOrderId ? prisma.jobOrder.findUnique({ where: { id: data.jobOrderId }, select: { id: true } }) : null,
+      data.marketId ? db.query.markets.findFirst({ columns: { id: true }, where: eq(markets.id, data.marketId) }) : null,
+      data.jobOrderId ? db.query.jobOrders.findFirst({ columns: { id: true }, where: eq(jobOrders.id, data.jobOrderId) }) : null,
     ]);
 
-    await prisma.lead.create({
-      data: {
-        type: data.type,
-        fullName: data.fullName,
-        phone: data.phone,
-        email: data.email || null,
-        birthYear: data.birthYear ? Number(data.birthYear) : null,
-        hometown: data.hometown || null,
-        marketId: market?.id ?? null,
-        jobOrderId: jobOrder?.id ?? null,
-        message: data.message || null,
-        source: data.source || null,
-        ipAddress: ip,
-      },
+    await db.insert(leads).values({
+      type: data.type,
+      fullName: data.fullName,
+      phone: data.phone,
+      email: data.email || null,
+      birthYear: data.birthYear ? Number(data.birthYear) : null,
+      hometown: data.hometown || null,
+      marketId: market?.id ?? null,
+      jobOrderId: jobOrder?.id ?? null,
+      message: data.message || null,
+      source: data.source || null,
+      ipAddress: ip,
     });
 
     revalidatePath("/admin");

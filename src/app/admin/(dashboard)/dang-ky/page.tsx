@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Download, Eye } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { asc, count, desc, eq } from "drizzle-orm";
+import { db, jobOrders, leads, markets } from "@/db";
 import { ADMIN_PAGE_SIZE, LEAD_STATUS_LABELS, LEAD_TYPE_LABELS } from "@/lib/constants";
 import { formatDateTime, telHref } from "@/lib/format";
 import { leadFilterWhere, parseLeadFilter } from "@/lib/validations/lead-admin";
@@ -27,17 +28,17 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
   const page = Math.max(1, Number(first(sp.page)) || 1);
   const where = leadFilterWhere(filter);
 
-  const [leads, total, markets, job] = await Promise.all([
-    prisma.lead.findMany({
+  const [items, [{ total }], marketOptions, job] = await Promise.all([
+    db.query.leads.findMany({
       where,
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * ADMIN_PAGE_SIZE,
-      take: ADMIN_PAGE_SIZE,
-      include: { market: { select: { name: true } }, jobOrder: { select: { title: true } } },
+      orderBy: [desc(leads.createdAt)],
+      limit: ADMIN_PAGE_SIZE,
+      offset: (page - 1) * ADMIN_PAGE_SIZE,
+      with: { market: { columns: { name: true } }, jobOrder: { columns: { title: true } } },
     }),
-    prisma.lead.count({ where }),
-    prisma.market.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
-    filter.job ? prisma.jobOrder.findUnique({ where: { id: filter.job }, select: { title: true } }) : null,
+    db.select({ total: count() }).from(leads).where(where),
+    db.select({ id: markets.id, name: markets.name }).from(markets).orderBy(asc(markets.order), asc(markets.name)),
+    filter.job ? db.query.jobOrders.findFirst({ columns: { title: true }, where: eq(jobOrders.id, filter.job) }) : null,
   ]);
   const totalPages = Math.ceil(total / ADMIN_PAGE_SIZE);
   const hasFilter = Boolean(filter.q || filter.status || filter.type || filter.market || filter.job);
@@ -73,7 +74,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
           placeholder="Loại đăng ký"
           options={Object.entries(LEAD_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
         />
-        <UrlParamSelect param="market" allLabel="Tất cả thị trường" placeholder="Thị trường" options={markets.map((m) => ({ value: m.id, label: m.name }))} />
+        <UrlParamSelect param="market" allLabel="Tất cả thị trường" placeholder="Thị trường" options={marketOptions.map((m) => ({ value: m.id, label: m.name }))} />
         {job && (
           <Badge variant="secondary" className="h-9 gap-1 px-3">
             Đơn hàng: <span className="max-w-48 truncate">{job.title}</span>
@@ -82,7 +83,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
         )}
       </div>
 
-      {leads.length === 0 ? (
+      {items.length === 0 ? (
         <EmptyState
           title={hasFilter ? "Không có đăng ký phù hợp" : "Chưa có đăng ký nào"}
           description={hasFilter ? "Thử đổi từ khóa hoặc bộ lọc." : "Khi khách gửi form tư vấn / ứng tuyển / liên hệ trên website, dữ liệu sẽ xuất hiện ở đây."}
@@ -102,7 +103,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
               </TableRow>
             </TableHeader>
             <TableBody>
-              {leads.map((lead) => (
+              {items.map((lead) => (
                 <TableRow key={lead.id} className={lead.status === "NEW" ? "bg-blue-50/40" : undefined}>
                   <TableCell className="max-w-48 whitespace-normal font-medium">
                     <Link href={`/admin/dang-ky/${lead.id}`} className="hover:underline">{lead.fullName}</Link>

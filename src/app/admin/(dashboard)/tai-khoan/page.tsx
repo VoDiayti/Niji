@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { KeyRound, Pencil, UserPlus } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { asc } from "drizzle-orm";
+import { db, users } from "@/db";
 import { requireAdmin } from "@/lib/auth-guard";
 import { ROLE_LABELS } from "@/lib/constants";
 import { formatDateTime, timeAgo } from "@/lib/format";
@@ -18,17 +19,17 @@ export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
   const me = await requireAdmin();
-  const users = await prisma.user.findMany({
-    orderBy: [{ role: "asc" }, { createdAt: "asc" }],
-    select: { id: true, name: true, email: true, role: true, isActive: true, lastLoginAt: true, createdAt: true },
+  const accounts = await db.query.users.findMany({
+    orderBy: [asc(users.role), asc(users.createdAt)],
+    columns: { id: true, name: true, email: true, role: true, isActive: true, lastLoginAt: true, createdAt: true },
   });
-  const adminCount = users.filter((u) => u.role === "ADMIN").length;
+  const adminCount = accounts.filter((u) => u.role === "ADMIN").length;
 
   return (
     <>
       <PageHeader
         title="Tài khoản admin"
-        description={`${users.length} tài khoản, ${adminCount} Quản trị viên. Chỉ Quản trị viên mới xem được trang này.`}
+        description={`${accounts.length} tài khoản, ${adminCount} Quản trị viên. Chỉ Quản trị viên mới xem được trang này.`}
         actions={
           <>
             <Button variant="outline" asChild>
@@ -54,7 +55,7 @@ export default async function UsersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => {
+            {accounts.map((user) => {
               const isSelf = user.id === me.id;
               const isLastAdmin = user.role === "ADMIN" && adminCount <= 1;
               return (

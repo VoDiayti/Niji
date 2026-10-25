@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/prisma";
+import { desc } from "drizzle-orm";
+import { db, leads } from "@/db";
 import { getSessionUser } from "@/lib/auth-guard";
 import { LEAD_STATUS_LABELS, LEAD_TYPE_LABELS } from "@/lib/constants";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -24,13 +25,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const where = leadFilterWhere(parseLeadFilter(searchParams));
 
-  const leads = await prisma.lead.findMany({
+  const items = await db.query.leads.findMany({
     where,
-    orderBy: { createdAt: "desc" },
-    include: { market: { select: { name: true } }, jobOrder: { select: { title: true } } },
+    orderBy: [desc(leads.createdAt)],
+    with: { market: { columns: { name: true } }, jobOrder: { columns: { title: true } } },
   });
 
-  const rows = leads.map((lead) =>
+  const rows = items.map((lead) =>
     [
       formatDateTime(lead.createdAt),
       LEAD_TYPE_LABELS[lead.type],

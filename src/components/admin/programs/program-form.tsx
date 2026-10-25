@@ -12,7 +12,7 @@ import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import { PROGRAM_TYPE_LABELS } from "@/lib/constants";
 import { PROGRAM_TYPE_VALUES, programSchema, type ProgramFormValues } from "@/lib/validations/program";
-import type { ProgramType } from "@/generated/prisma/enums";
+import type { ProgramType } from "@/db/enums";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";

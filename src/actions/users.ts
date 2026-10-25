@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { and, count, eq, ne } from "drizzle-orm";
+import { db, users } from "@/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
-import { prisma } from "@/lib/prisma";
 import { assertAdmin, assertUser } from "@/lib/auth-guard";
 import { fail, ok, safeAction, zodFail, type ActionResult } from "@/lib/action-result";
 import { changePasswordSchema, createUserSchema, updateUserSchema } from "@/lib/validations/user";
@@ -16,7 +17,11 @@ function revalidateUserPages(id?: string) {
 
 /** Số Quản trị viên đang hoạt động, không tính tài khoản `excludeId` */
 async function countOtherActiveAdmins(excludeId: string) {
-  return prisma.user.count({ where: { role: "ADMIN", isActive: true, id: { not: excludeId } } });
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(users)
+    .where(and(eq(users.role, "ADMIN"), eq(users.isActive, true), ne(users.id, excludeId)));
+  return total;
 }
 
 export async function createUser(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -26,12 +31,13 @@ export async function createUser(input: unknown): Promise<ActionResult<{ id: str
     if (!parsed.success) return zodFail(parsed.error);
     const { name, email, password, role } = parsed.data;
 
-    const exists = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    const exists = await db.query.users.findFirst({ columns: { id: true }, where: eq(users.email, email) });
     if (exists) return fail("Email này đã được sử dụng", { email: ["Email này đã được sử dụng"] });
 
-    const user = await prisma.user.create({
-      data: { name, email, role, passwordHash: await hashPassword(password) },
-    });
+    const [user] = await db
+      .insert(users)
+      .values({ name, email, role, passwordHash: await hashPassword(password) })
+      .returning({ id: users.id });
     revalidateUserPages();
     return ok({ id: user.id }, "Đã tạo tài khoản");
   });
@@ -44,7 +50,7 @@ export async function updateUser(id: string, input: unknown): Promise<ActionResu
     if (!parsed.success) return zodFail(parsed.error);
     const { name, role, isActive, password } = parsed.data;
 
-    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true, isActive: true } });
+    const target = await db.query.users.findFirst({ columns: { id: true, role: true, isActive: true }, where: eq(users.id, id) });
     if (!target) return fail("Không tìm thấy tài khoản");
 
     if (target.id === me.id) {
@@ -58,10 +64,10 @@ export async function updateUser(id: string, input: unknown): Promise<ActionResu
       }
     }
 
-    await prisma.user.update({
-      where: { id },
-      data: { name, role, isActive, ...(password ? { passwordHash: await hashPassword(password) } : {}) },
-    });
+    await db
+      .update(users)
+      .set({ name, role, isActive, ...(password ? { passwordHash: await hashPassword(password) } : {}) })
+      .where(eq(users.id, id));
     revalidateUserPages(id);
     return ok({ id }, password ? "Đã lưu tài khoản và đặt lại mật khẩu" : "Đã lưu tài khoản");
   });
@@ -72,14 +78,17 @@ export async function deleteUser(id: string): Promise<ActionResult> {
     const me = await assertAdmin();
     if (id === me.id) return fail("Bạn không thể xóa tài khoản đang đăng nhập");
 
-    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
+    const target = await db.query.users.findFirst({ columns: { id: true, role: true }, where: eq(users.id, id) });
     if (!target) return fail("Không tìm thấy tài khoản");
     if (target.role === "ADMIN") {
-      const otherAdmins = await prisma.user.count({ where: { role: "ADMIN", id: { not: id } } });
+      const [{ otherAdmins }] = await db
+        .select({ otherAdmins: count() })
+        .from(users)
+        .where(and(eq(users.role, "ADMIN"), ne(users.id, id)));
       if (otherAdmins === 0) return fail("Không thể xóa tài khoản Quản trị viên cuối cùng");
     }
 
-    await prisma.user.delete({ where: { id } });
+    await db.delete(users).where(eq(users.id, id));
     revalidateUserPages();
     return ok(undefined, "Đã xóa tài khoản");
   });
@@ -92,13 +101,13 @@ export async function changeOwnPassword(input: unknown): Promise<ActionResult> {
     const parsed = changePasswordSchema.safeParse(input);
     if (!parsed.success) return zodFail(parsed.error);
 
-    const user = await prisma.user.findUnique({ where: { id: me.id }, select: { passwordHash: true } });
+    const user = await db.query.users.findFirst({ columns: { passwordHash: true }, where: eq(users.id, me.id) });
     if (!user) return fail("Không tìm thấy tài khoản");
 
     const valid = await verifyPassword(parsed.data.currentPassword, user.passwordHash);
     if (!valid) return fail("Mật khẩu hiện tại không đúng", { currentPassword: ["Mật khẩu hiện tại không đúng"] });
 
-    await prisma.user.update({ where: { id: me.id }, data: { passwordHash: await hashPassword(parsed.data.newPassword) } });
+    await db.update(users).set({ passwordHash: await hashPassword(parsed.data.newPassword) }).where(eq(users.id, me.id));
     return ok(undefined, "Đã đổi mật khẩu thành công");
   });
 }

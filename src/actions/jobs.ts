@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { and, eq, ne } from "drizzle-orm";
+import { db, jobOrders, markets } from "@/db";
 import { assertUser } from "@/lib/auth-guard";
 import { fail, ok, safeAction, zodFail, type ActionResult } from "@/lib/action-result";
 import { slugify, uniqueSlug } from "@/lib/slug";
@@ -23,8 +24,20 @@ function revalidateJobPages(jobSlugs: (string | undefined)[], marketSlugs: (stri
 async function resolveSlug(preferred: string | undefined, title: string, excludeId?: string) {
   const base = slugify(preferred ?? "") || slugify(title) || "don-hang";
   return uniqueSlug(base, async (slug) => {
-    const found = await prisma.jobOrder.findUnique({ where: { slug }, select: { id: true } });
-    return !!found && found.id !== excludeId;
+    const found = await db.query.jobOrders.findFirst({
+      columns: { id: true },
+      where: and(eq(jobOrders.slug, slug), excludeId ? ne(jobOrders.id, excludeId) : undefined),
+    });
+    return !!found;
+  });
+}
+
+/** Đơn hàng kèm slug thị trường (dùng để làm mới cache các trang liên quan) */
+async function findJobSlugs(id: string) {
+  return db.query.jobOrders.findFirst({
+    columns: { slug: true, status: true },
+    where: eq(jobOrders.id, id),
+    with: { market: { columns: { slug: true } } },
   });
 }
 
@@ -41,7 +54,7 @@ function htmlOrNull(html: string | undefined): string | null {
   return empty ? null : html;
 }
 
-/** Chuyển giá trị form (chuỗi) sang dữ liệu Prisma */
+/** Chuyển giá trị form (chuỗi) sang dữ liệu ghi DB */
 function toData(v: JobFormValues) {
   return {
     title: v.title,
@@ -73,11 +86,11 @@ export async function createJob(input: unknown): Promise<ActionResult<{ id: stri
     const parsed = jobSchema.safeParse(input);
     if (!parsed.success) return zodFail(parsed.error);
 
-    const market = await prisma.market.findUnique({ where: { id: parsed.data.marketId }, select: { slug: true } });
+    const market = await db.query.markets.findFirst({ columns: { slug: true }, where: eq(markets.id, parsed.data.marketId) });
     if (!market) return fail("Thị trường không tồn tại", { marketId: ["Thị trường không tồn tại"] });
 
     const slug = await resolveSlug(parsed.data.slug, parsed.data.title);
-    const job = await prisma.jobOrder.create({ data: { ...toData(parsed.data), slug } });
+    const [job] = await db.insert(jobOrders).values({ ...toData(parsed.data), slug }).returning({ id: jobOrders.id });
     revalidateJobPages([slug], [market.slug]);
     return ok({ id: job.id }, "Đã tạo đơn hàng");
   });
@@ -89,13 +102,13 @@ export async function updateJob(id: string, input: unknown): Promise<ActionResul
     const parsed = jobSchema.safeParse(input);
     if (!parsed.success) return zodFail(parsed.error);
 
-    const existing = await prisma.jobOrder.findUnique({ where: { id }, select: { slug: true, market: { select: { slug: true } } } });
+    const existing = await findJobSlugs(id);
     if (!existing) return fail("Không tìm thấy đơn hàng");
-    const market = await prisma.market.findUnique({ where: { id: parsed.data.marketId }, select: { slug: true } });
+    const market = await db.query.markets.findFirst({ columns: { slug: true }, where: eq(markets.id, parsed.data.marketId) });
     if (!market) return fail("Thị trường không tồn tại", { marketId: ["Thị trường không tồn tại"] });
 
     const slug = await resolveSlug(parsed.data.slug, parsed.data.title, id);
-    await prisma.jobOrder.update({ where: { id }, data: { ...toData(parsed.data), slug } });
+    await db.update(jobOrders).set({ ...toData(parsed.data), slug }).where(eq(jobOrders.id, id));
     revalidateJobPages([existing.slug, slug], [existing.market.slug, market.slug]);
     revalidatePath(`${ADMIN_PATH}/${id}`);
     return ok({ id }, "Đã lưu đơn hàng");
@@ -105,9 +118,9 @@ export async function updateJob(id: string, input: unknown): Promise<ActionResul
 export async function deleteJob(id: string): Promise<ActionResult> {
   return safeAction(async () => {
     await assertUser();
-    const job = await prisma.jobOrder.findUnique({ where: { id }, select: { slug: true, market: { select: { slug: true } } } });
+    const job = await findJobSlugs(id);
     if (!job) return fail("Không tìm thấy đơn hàng");
-    await prisma.jobOrder.delete({ where: { id } });
+    await db.delete(jobOrders).where(eq(jobOrders.id, id));
     revalidateJobPages([job.slug], [job.market.slug]);
     return ok(undefined, "Đã xóa đơn hàng");
   });
@@ -117,11 +130,11 @@ export async function deleteJob(id: string): Promise<ActionResult> {
 export async function toggleJobStatus(id: string): Promise<ActionResult<{ status: "OPEN" | "CLOSED" }>> {
   return safeAction(async () => {
     await assertUser();
-    const job = await prisma.jobOrder.findUnique({ where: { id }, select: { status: true } });
+    const job = await findJobSlugs(id);
     if (!job) return fail("Không tìm thấy đơn hàng");
     const status = job.status === "OPEN" ? "CLOSED" : "OPEN";
-    const updated = await prisma.jobOrder.update({ where: { id }, data: { status }, select: { slug: true, market: { select: { slug: true } } } });
-    revalidateJobPages([updated.slug], [updated.market.slug]);
+    await db.update(jobOrders).set({ status }).where(eq(jobOrders.id, id));
+    revalidateJobPages([job.slug], [job.market.slug]);
     return ok({ status }, status === "OPEN" ? "Đã mở lại đơn hàng" : "Đã đóng đơn hàng");
   });
 }
@@ -129,7 +142,9 @@ export async function toggleJobStatus(id: string): Promise<ActionResult<{ status
 export async function toggleJobFeatured(id: string, isFeatured: boolean): Promise<ActionResult> {
   return safeAction(async () => {
     await assertUser();
-    const job = await prisma.jobOrder.update({ where: { id }, data: { isFeatured }, select: { slug: true, market: { select: { slug: true } } } });
+    const job = await findJobSlugs(id);
+    if (!job) return fail("Không tìm thấy đơn hàng");
+    await db.update(jobOrders).set({ isFeatured }).where(eq(jobOrders.id, id));
     revalidateJobPages([job.slug], [job.market.slug]);
     return ok(undefined, isFeatured ? "Đã đánh dấu nổi bật" : "Đã bỏ nổi bật");
   });

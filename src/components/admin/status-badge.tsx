@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { JOB_STATUS_LABELS, LEAD_STATUS_LABELS, POST_STATUS_LABELS } from "@/lib/constants";
-import type { JobStatus, LeadStatus, PostStatus } from "@/generated/prisma/enums";
+import type { JobStatus, LeadStatus, PostStatus } from "@/db/enums";
 
 const POST_STYLES: Record<PostStatus, string> = {
   DRAFT: "bg-neutral-100 text-neutral-700 border-neutral-200",

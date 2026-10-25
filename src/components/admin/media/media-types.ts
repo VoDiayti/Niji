@@ -1,4 +1,4 @@
-import type { Media } from "@/generated/prisma/client";
+import type { Media } from "@/db/types";
 
 /** Số ảnh mỗi trang trong thư viện ảnh */
 export const MEDIA_PAGE_SIZE = 40;

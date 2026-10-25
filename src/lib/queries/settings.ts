@@ -1,7 +1,8 @@
 import "server-only";
 import { cache } from "react";
-import { prisma } from "@/lib/prisma";
-import type { Setting } from "@/generated/prisma/client";
+import { eq } from "drizzle-orm";
+import { db, settings } from "@/db";
+import type { Setting } from "@/db/types";
 
 /** Giá trị mặc định khi chưa seed – để website không lỗi trắng trang */
 export const DEFAULT_SETTINGS: Setting = {
@@ -43,8 +44,8 @@ export const DEFAULT_SETTINGS: Setting = {
  * dù được gọi ở nhiều component (layout, header, footer, metadata...).
  */
 export const getSettings = cache(async (): Promise<Setting> => {
-  const setting = await prisma.setting.findUnique({ where: { id: 1 } });
-  return setting ?? DEFAULT_SETTINGS;
+  const row = await db.query.settings.findFirst({ where: eq(settings.id, 1) });
+  return row ?? DEFAULT_SETTINGS;
 });
 
 /** URL gốc của website (dùng cho metadata, sitemap, JSON-LD) */

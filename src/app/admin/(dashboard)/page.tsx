@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Briefcase, ClipboardList, FileText, Users } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { count, desc, eq, gte } from "drizzle-orm";
+import { db, jobOrders, leads, posts } from "@/db";
 import { formatDateTime } from "@/lib/format";
 import { LEAD_TYPE_LABELS } from "@/lib/constants";
 import { PageHeader } from "@/components/admin/page-header";
@@ -12,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export const dynamic = "force-dynamic";
 
-/** Mốc thời gian 7 ngày trước (tách hàm để tuân thủ quy tắc component thuần của React) */
+/** Mốc thời gian N ngày trước (tách hàm để tuân thủ quy tắc component thuần của React) */
 function daysAgo(days: number): Date {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
@@ -21,14 +22,23 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
   const { error } = await searchParams;
   const sevenDaysAgo = daysAgo(7);
 
-  const [postCount, publishedCount, openJobs, newLeads7d, totalLeads, latestLeads, recentPosts] = await Promise.all([
-    prisma.post.count(),
-    prisma.post.count({ where: { status: "PUBLISHED" } }),
-    prisma.jobOrder.count({ where: { status: "OPEN" } }),
-    prisma.lead.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
-    prisma.lead.count(),
-    prisma.lead.findMany({ orderBy: { createdAt: "desc" }, take: 8, include: { market: { select: { name: true } }, jobOrder: { select: { title: true } } } }),
-    prisma.post.findMany({ orderBy: { updatedAt: "desc" }, take: 6, select: { id: true, title: true, status: true, updatedAt: true, category: { select: { name: true } } } }),
+  const [[{ postCount }], [{ publishedCount }], [{ openJobs }], [{ newLeads7d }], [{ totalLeads }], latestLeads, recentPosts] = await Promise.all([
+    db.select({ postCount: count() }).from(posts),
+    db.select({ publishedCount: count() }).from(posts).where(eq(posts.status, "PUBLISHED")),
+    db.select({ openJobs: count() }).from(jobOrders).where(eq(jobOrders.status, "OPEN")),
+    db.select({ newLeads7d: count() }).from(leads).where(gte(leads.createdAt, sevenDaysAgo)),
+    db.select({ totalLeads: count() }).from(leads),
+    db.query.leads.findMany({
+      orderBy: [desc(leads.createdAt)],
+      limit: 8,
+      with: { market: { columns: { name: true } }, jobOrder: { columns: { title: true } } },
+    }),
+    db.query.posts.findMany({
+      orderBy: [desc(posts.updatedAt)],
+      limit: 6,
+      columns: { id: true, title: true, status: true, updatedAt: true },
+      with: { category: { columns: { name: true } } },
+    }),
   ]);
 
   const stats = [

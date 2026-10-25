@@ -4,7 +4,7 @@
  * Định dạng lưu: pbkdf2$sha256$<số vòng>$<salt base64>$<hash base64>
  * Số vòng được lưu kèm nên có thể đổi PASSWORD_HASH_ITERATIONS mà mật khẩu cũ vẫn kiểm tra được.
  */
-const DEFAULT_ITERATIONS = Number(process.env.PASSWORD_HASH_ITERATIONS ?? 100_000);
+export const PASSWORD_ITERATIONS = Number(process.env.PASSWORD_HASH_ITERATIONS ?? 50_000);
 const KEY_BYTES = 32;
 
 function toBase64(bytes: Uint8Array): string {
@@ -26,7 +26,7 @@ async function derive(password: string, salt: Uint8Array<ArrayBuffer>, iteration
   return new Uint8Array(bits);
 }
 
-export async function hashPassword(password: string, iterations = DEFAULT_ITERATIONS): Promise<string> {
+export async function hashPassword(password: string, iterations = PASSWORD_ITERATIONS): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const hash = await derive(password, salt, iterations);
   return `pbkdf2$sha256$${iterations}$${toBase64(salt)}$${toBase64(hash)}`;
@@ -44,4 +44,11 @@ export async function verifyPassword(password: string, stored: string): Promise<
   let diff = 0;
   for (let i = 0; i < actual.length; i++) diff |= actual[i] ^ expected[i];
   return diff === 0;
+}
+
+/** Số vòng đã dùng trong một hash (để nâng cấp hash khi cấu hình thay đổi) */
+export function getHashIterations(stored: string): number | null {
+  const parts = stored.split("$");
+  const n = Number(parts[2]);
+  return parts.length === 5 && Number.isFinite(n) ? n : null;
 }

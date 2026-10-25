@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Calendar, ExternalLink, Eye, Pencil, Tag, User } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { eq } from "drizzle-orm";
+import { db, posts } from "@/db";
 import { formatDateTime } from "@/lib/format";
 import { PostStatusBadge } from "@/components/admin/status-badge";
 import { RichContent } from "@/components/shared/rich-content";
@@ -14,11 +15,16 @@ export const metadata: Metadata = { title: "Xem trước bài viết" };
 /** Bản xem trước bài viết – hiển thị như trang công khai, kèm dải thông báo trạng thái */
 export default async function PostPreviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const post = await prisma.post.findUnique({
-    where: { id },
-    include: { category: { select: { name: true, slug: true } }, tags: { select: { id: true, name: true, slug: true } }, author: { select: { name: true } } },
+  const post = await db.query.posts.findFirst({
+    where: eq(posts.id, id),
+    with: {
+      category: { columns: { name: true, slug: true } },
+      postTags: { with: { tag: { columns: { id: true, name: true, slug: true } } } },
+      author: { columns: { name: true } },
+    },
   });
   if (!post) notFound();
+  const tagList = post.postTags.map((pt) => pt.tag);
 
   const isLive = (post.status === "PUBLISHED" || post.status === "SCHEDULED") && !!post.publishedAt && post.publishedAt <= new Date();
   const statusNote = isLive
@@ -68,10 +74,10 @@ export default async function PostPreviewPage({ params }: { params: Promise<{ id
 
         <RichContent html={post.content} className="mt-8" />
 
-        {post.tags.length > 0 && (
+        {tagList.length > 0 && (
           <div className="mt-8 flex flex-wrap items-center gap-2 border-t pt-6">
             <Tag className="size-4 text-muted-foreground" />
-            {post.tags.map((t) => (
+            {tagList.map((t) => (
               <Badge key={t.id} variant="outline">{t.name}</Badge>
             ))}
           </div>

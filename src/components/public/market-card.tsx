@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Banknote, Clock } from "lucide-react";
-import type { Market } from "@/generated/prisma/client";
+import type { Market } from "@/db/types";
 import { CountryFlag } from "@/components/public/country-flag";
 import { cn } from "@/lib/utils";
 import { parseStringList } from "@/lib/format";

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { db, settings } from "@/db";
 import { assertUser } from "@/lib/auth-guard";
 import { ok, safeAction, zodFail, type ActionResult } from "@/lib/action-result";
 import { settingsSchema, type SettingsFormValues } from "@/lib/validations/settings";
@@ -14,7 +14,7 @@ function htmlOrNull(html: string | undefined): string | null {
   return empty ? null : html;
 }
 
-/** Chuyển giá trị form (chuỗi) sang dữ liệu Prisma */
+/** Chuyển giá trị form (chuỗi) sang dữ liệu ghi DB */
 function toData(v: SettingsFormValues) {
   return {
     companyName: v.companyName,
@@ -56,12 +56,9 @@ export async function updateSettings(input: unknown): Promise<ActionResult> {
     const parsed = settingsSchema.safeParse(input);
     if (!parsed.success) return zodFail(parsed.error);
 
-    const data = toData(parsed.data);
-    await prisma.setting.upsert({
-      where: { id: 1 },
-      create: { id: 1, ...data },
-      update: data,
-    });
+    // Upsert: onConflictDoUpdate không chạy $onUpdateFn nên tự đặt updatedAt
+    const data = { ...toData(parsed.data), updatedAt: new Date() };
+    await db.insert(settings).values({ id: 1, ...data }).onConflictDoUpdate({ target: settings.id, set: data });
 
     // Cài đặt dùng ở header/footer/metadata của mọi trang → làm mới toàn bộ site
     revalidatePath("/", "layout");

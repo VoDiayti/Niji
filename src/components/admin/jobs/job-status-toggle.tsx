@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CircleX, LoaderCircle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import type { JobStatus } from "@/generated/prisma/enums";
+import type { JobStatus } from "@/db/enums";
 import { toggleJobStatus } from "@/actions/jobs";
 import { JobStatusBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { asc } from "drizzle-orm";
+import { db, partners } from "@/db";
 import { deletePartner, togglePartnerActive } from "@/actions/partners";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -15,7 +16,7 @@ export const metadata: Metadata = { title: "Đối tác" };
 export const dynamic = "force-dynamic";
 
 export default async function PartnersPage() {
-  const partners = await prisma.partner.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }] });
+  const items = await db.query.partners.findMany({ orderBy: [asc(partners.order), asc(partners.name)] });
 
   return (
     <>
@@ -25,7 +26,7 @@ export default async function PartnersPage() {
         actions={<PartnerFormDialog />}
       />
 
-      {partners.length === 0 ? (
+      {items.length === 0 ? (
         <EmptyState title="Chưa có đối tác" description="Thêm logo đối tác để tăng uy tín cho website." action={<PartnerFormDialog />} />
       ) : (
         <Card className="overflow-hidden py-0">
@@ -41,7 +42,7 @@ export default async function PartnersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {partners.map((partner) => (
+              {items.map((partner) => (
                 <TableRow key={partner.id}>
                   <TableCell><Thumbnail src={partner.logo} fit="contain" className="w-24 bg-white" /></TableCell>
                   <TableCell className="max-w-64 whitespace-normal font-medium">{partner.name}</TableCell>

@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
 import { POST_STATUS_LABELS } from "@/lib/constants";
 import { NONE_VALUE, POST_STATUS_VALUES, postSchema, type PostFormValues } from "@/lib/validations/post";
-import type { PostStatus } from "@/generated/prisma/enums";
+import type { PostStatus } from "@/db/enums";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";

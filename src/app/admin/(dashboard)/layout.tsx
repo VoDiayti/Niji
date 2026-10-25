@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth-guard";
-import { prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/queries/settings";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { AdminHeader } from "@/components/admin/header";
 
@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 /** Layout khu vực quản trị: yêu cầu đăng nhập (proxy đã chặn, kiểm tra lại ở đây cho chắc) */
 export default async function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const setting = await prisma.setting.findUnique({ where: { id: 1 }, select: { shortName: true, companyName: true } });
-  const companyName = setting?.shortName || setting?.companyName || "Quản trị";
+  const setting = await getSettings();
+  const companyName = setting.shortName || setting.companyName || "Quản trị";
 
   return (
     <div className="flex min-h-screen bg-muted/30">

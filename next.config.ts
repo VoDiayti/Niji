@@ -14,13 +14,10 @@ const remoteHosts = [hostOf(process.env.R2_PUBLIC_URL), ...(process.env.IMAGE_RE
   .map((hostname) => ({ protocol: "https" as const, hostname }));
 
 const nextConfig: NextConfig = {
-  // Không đưa các gói chỉ dùng lúc dev/CLI vào bản build cho Worker. Turbopack quét mọi file .wasm
-  // trong các gói được trace, nếu không loại trừ thì Prisma CLI, pglite, @vercel/og... làm Worker phình thêm ~15 MiB.
+  // Không đưa các gói có file .wasm không dùng vào bản build cho Worker (Turbopack quét mọi .wasm trong gói được trace,
+  // mỗi file làm Worker phình thêm hàng trăm KiB). Thêm gói mới có .wasm thì cân nhắc loại trừ tương tự.
   outputFileTracingExcludes: {
     "*": [
-      "./node_modules/prisma/**",
-      "./node_modules/@prisma/dev/**",
-      "./node_modules/@prisma/schema-engine-wasm/**",
       "./node_modules/@electric-sql/**",
       "./node_modules/blake3-wasm/**",
       "./node_modules/next/dist/compiled/@vercel/og/**",

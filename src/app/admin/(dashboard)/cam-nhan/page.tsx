@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Star } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { asc, desc } from "drizzle-orm";
+import { db, testimonials } from "@/db";
 import { deleteTestimonial, toggleTestimonialActive } from "@/actions/testimonials";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -15,7 +16,7 @@ export const metadata: Metadata = { title: "Cảm nhận học viên" };
 export const dynamic = "force-dynamic";
 
 export default async function TestimonialsPage() {
-  const items = await prisma.testimonial.findMany({ orderBy: [{ order: "asc" }, { createdAt: "desc" }] });
+  const items = await db.query.testimonials.findMany({ orderBy: [asc(testimonials.order), desc(testimonials.createdAt)] });
 
   return (
     <>

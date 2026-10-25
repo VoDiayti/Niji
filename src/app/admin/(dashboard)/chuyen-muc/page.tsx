@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Pencil, Plus } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { asc, count, eq, getTableColumns } from "drizzle-orm";
+import { categories, db, posts } from "@/db";
 import { deleteCategory } from "@/actions/categories";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -15,10 +16,13 @@ export const metadata: Metadata = { title: "Chuyên mục" };
 export const dynamic = "force-dynamic";
 
 export default async function CategoriesPage() {
-  const categories = await prisma.category.findMany({
-    orderBy: [{ order: "asc" }, { name: "asc" }],
-    include: { _count: { select: { posts: true } } },
-  });
+  // Số bài viết mỗi chuyên mục (thay _count của Prisma): leftJoin + count + groupBy
+  const rows = await db
+    .select({ ...getTableColumns(categories), postCount: count(posts.id) })
+    .from(categories)
+    .leftJoin(posts, eq(posts.categoryId, categories.id))
+    .groupBy(categories.id)
+    .orderBy(asc(categories.order), asc(categories.name));
 
   const addButton = (
     <CategoryDialog trigger={<Button><Plus /> Thêm chuyên mục</Button>} />
@@ -26,9 +30,9 @@ export default async function CategoriesPage() {
 
   return (
     <>
-      <PageHeader title="Chuyên mục" description={`${categories.length} chuyên mục – nhóm bài viết theo chủ đề trong mục Tin tức.`} actions={addButton} />
+      <PageHeader title="Chuyên mục" description={`${rows.length} chuyên mục – nhóm bài viết theo chủ đề trong mục Tin tức.`} actions={addButton} />
 
-      {categories.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState title="Chưa có chuyên mục nào" description="Tạo chuyên mục để phân loại bài viết, ví dụ: Tin tức XKLĐ, Kinh nghiệm, Chính sách." action={addButton} />
       ) : (
         <Card className="overflow-hidden py-0">
@@ -44,7 +48,7 @@ export default async function CategoriesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {categories.map((c) => {
+              {rows.map((c) => {
                 const data = { id: c.id, name: c.name, slug: c.slug, description: c.description, order: c.order, isActive: c.isActive };
                 return (
                   <TableRow key={c.id}>
@@ -53,7 +57,7 @@ export default async function CategoriesPage() {
                       {c.description && <p className="line-clamp-1 text-xs text-muted-foreground">{c.description}</p>}
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground md:table-cell">/tin-tuc/chuyen-muc/{c.slug}</TableCell>
-                    <TableCell className="text-center">{c._count.posts}</TableCell>
+                    <TableCell className="text-center">{c.postCount}</TableCell>
                     <TableCell className="hidden text-center sm:table-cell">{c.order}</TableCell>
                     <TableCell><ActiveBadge active={c.isActive} /></TableCell>
                     <TableCell className="text-right">
@@ -63,8 +67,8 @@ export default async function CategoriesPage() {
                           action={deleteCategory.bind(null, c.id)}
                           title="Xóa chuyên mục?"
                           description={
-                            c._count.posts > 0
-                              ? `Chuyên mục "${c.name}" sẽ bị xóa. ${c._count.posts} bài viết thuộc chuyên mục này KHÔNG bị xóa mà sẽ chuyển về "Chưa phân loại".`
+                            c.postCount > 0
+                              ? `Chuyên mục "${c.name}" sẽ bị xóa. ${c.postCount} bài viết thuộc chuyên mục này KHÔNG bị xóa mà sẽ chuyển về "Chưa phân loại".`
                               : `Chuyên mục "${c.name}" sẽ bị xóa. Hành động này không thể hoàn tác.`
                           }
                         />

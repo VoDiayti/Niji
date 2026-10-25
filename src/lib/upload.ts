@@ -1,5 +1,6 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { eq } from "drizzle-orm";
+import { db, media } from "@/db";
 import { deleteObject, putObject } from "@/lib/storage";
 import { slugify } from "@/lib/slug";
 
@@ -56,8 +57,9 @@ export async function storeImage(
   const stored = await putObject(key, body, file.type, { alt });
   const size = typeof body === "string" ? new TextEncoder().encode(body).byteLength : body.byteLength;
 
-  return prisma.media.create({
-    data: {
+  const [row] = await db
+    .insert(media)
+    .values({
       url: stored.url,
       storageKey: stored.key,
       filename: file.name,
@@ -66,17 +68,18 @@ export async function storeImage(
       width: opts.width ?? null,
       height: opts.height ?? null,
       alt,
-      uploadedById: opts.uploadedById,
-    },
-  });
+      uploadedById: opts.uploadedById ?? null,
+    })
+    .returning();
+  return row;
 }
 
 /** Xóa ảnh khỏi R2 và database */
 export async function deleteMedia(id: string) {
-  const media = await prisma.media.findUnique({ where: { id } });
-  if (!media) return;
-  if (media.storageKey) {
-    await deleteObject(media.storageKey).catch((err) => console.error("[storage] remove failed", err));
+  const row = await db.query.media.findFirst({ where: eq(media.id, id) });
+  if (!row) return;
+  if (row.storageKey) {
+    await deleteObject(row.storageKey).catch((err) => console.error("[storage] remove failed", err));
   }
-  await prisma.media.delete({ where: { id } });
+  await db.delete(media).where(eq(media.id, id));
 }

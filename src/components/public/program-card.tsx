@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Clock, Wallet } from "lucide-react";
-import type { TrainingProgram } from "@/generated/prisma/client";
+import type { TrainingProgram } from "@/db/types";
 import { PROGRAM_TYPE_LABELS } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";

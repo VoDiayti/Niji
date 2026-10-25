@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { Prisma } from "@/generated/prisma/client";
+import { and, eq, like, or, type SQL } from "drizzle-orm";
+import { leads } from "@/db/schema";
 
 export const LEAD_STATUSES = ["NEW", "CONTACTED", "PASSED", "CANCELLED"] as const;
 export const LEAD_TYPES = ["CONSULTATION", "APPLICATION", "CONTACT"] as const;
@@ -41,21 +42,24 @@ export function parseLeadFilter(source: Record<string, unknown> | URLSearchParam
   return leadFilterSchema.parse({ q: get("q"), status: get("status"), type: get("type"), market: get("market"), job: get("job") });
 }
 
-/** Điều kiện Prisma tương ứng với bộ lọc */
-export function leadFilterWhere(filter: LeadFilter): Prisma.LeadWhereInput {
-  const where: Prisma.LeadWhereInput = {};
-  if (filter.status) where.status = filter.status;
-  if (filter.type) where.type = filter.type;
-  if (filter.market) where.marketId = filter.market;
-  if (filter.job) where.jobOrderId = filter.job;
-  if (filter.q) {
-    const q = filter.q;
-    const digits = q.replace(/\D/g, "");
-    where.OR = [
-      { fullName: { contains: q } },
-      { email: { contains: q } },
-      ...(digits ? [{ phone: { contains: digits } }] : []),
-    ];
-  }
-  return where;
+/**
+ * Điều kiện Drizzle tương ứng với bộ lọc (undefined = không lọc).
+ * Dùng cho cả `db.query.leads.findMany({ where })` và `db.select().from(leads).where(...)`.
+ */
+export function leadFilterWhere(filter: LeadFilter): SQL | undefined {
+  const q = filter.q;
+  const digits = q ? q.replace(/\D/g, "") : "";
+  return and(
+    filter.status ? eq(leads.status, filter.status) : undefined,
+    filter.type ? eq(leads.type, filter.type) : undefined,
+    filter.market ? eq(leads.marketId, filter.market) : undefined,
+    filter.job ? eq(leads.jobOrderId, filter.job) : undefined,
+    q
+      ? or(
+          like(leads.fullName, `%${q}%`),
+          like(leads.email, `%${q}%`),
+          digits ? like(leads.phone, `%${digits}%`) : undefined
+        )
+      : undefined
+  );
 }

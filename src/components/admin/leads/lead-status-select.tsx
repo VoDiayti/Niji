@@ -3,9 +3,8 @@
 import { useOptimistic, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import type { LeadStatus } from "@/generated/prisma/enums";
+import { LEAD_STATUS_VALUES, type LeadStatus } from "@/db/enums";
 import { LEAD_STATUS_LABELS } from "@/lib/constants";
-import { LEAD_STATUSES } from "@/lib/validations/lead-admin";
 import { updateLeadStatus } from "@/actions/leads";
 import { LeadStatusBadge } from "@/components/admin/status-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,7 +36,7 @@ export function LeadStatusSelect({ id, status }: { id: string; status: LeadStatu
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {LEAD_STATUSES.map((s) => (
+        {LEAD_STATUS_VALUES.map((s) => (
           <SelectItem key={s} value={s}>
             <LeadStatusBadge status={s} /> <span className="sr-only">{LEAD_STATUS_LABELS[s]}</span>
           </SelectItem>

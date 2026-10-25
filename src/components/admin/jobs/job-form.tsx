@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import type { JobOrder } from "@/generated/prisma/client";
+import type { JobOrder } from "@/db/types";
 import { slugify } from "@/lib/slug";
 import { GENDER_LABELS, JOB_STATUS_LABELS } from "@/lib/constants";
 import { JOB_GENDERS, JOB_STATUSES, jobSchema, type JobFormValues } from "@/lib/validations/job";

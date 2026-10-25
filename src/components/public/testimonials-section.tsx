@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Quote, Star } from "lucide-react";
-import type { Testimonial } from "@/generated/prisma/client";
+import type { Testimonial } from "@/db/types";
 import { SectionHeading } from "@/components/public/section-heading";
 import { cn } from "@/lib/utils";
 

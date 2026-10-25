@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV } from "@/components/admin/nav";
-import type { Role } from "@/generated/prisma/enums";
+import type { Role } from "@/db/enums";
 
 export function AdminNav({ role, onNavigate }: { role: Role; onNavigate?: () => void }) {
   const pathname = usePathname();

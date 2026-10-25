@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Eye, Image as ImageIcon, Pencil, Plus } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { and, asc, count, desc, eq, isNull, like } from "drizzle-orm";
+import { categories, db, posts } from "@/db";
 import { formatDateTime } from "@/lib/format";
 import { ADMIN_PAGE_SIZE, POST_STATUS_LABELS } from "@/lib/constants";
 import { NONE_VALUE } from "@/lib/validations/post";
 import { deletePost } from "@/actions/posts";
-import type { Prisma } from "@/generated/prisma/client";
-import type { PostStatus } from "@/generated/prisma/enums";
+import type { PostStatus } from "@/db/enums";
 import { PageHeader } from "@/components/admin/page-header";
 import { SearchInput, UrlParamSelect } from "@/components/admin/url-filters";
 import { ListPagination } from "@/components/admin/list-pagination";
@@ -35,26 +35,23 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
   const status = isPostStatus(sp.status) ? sp.status : undefined;
   const category = sp.category?.trim() || undefined;
 
-  const where: Prisma.PostWhereInput = {
-    ...(q ? { title: { contains: q } } : {}),
-    ...(status ? { status } : {}),
-    ...(category === NONE_VALUE ? { categoryId: null } : category ? { categoryId: category } : {}),
-  };
+  const where = and(
+    q ? like(posts.title, `%${q}%`) : undefined,
+    status ? eq(posts.status, status) : undefined,
+    category === NONE_VALUE ? isNull(posts.categoryId) : category ? eq(posts.categoryId, category) : undefined
+  );
 
-  const [posts, total, categories] = await prisma.$transaction([
-    prisma.post.findMany({
+  const [rows, [{ total }], categoryOptions] = await Promise.all([
+    db.query.posts.findMany({
       where,
-      orderBy: { updatedAt: "desc" },
-      skip: (page - 1) * ADMIN_PAGE_SIZE,
-      take: ADMIN_PAGE_SIZE,
-      select: {
-        id: true, title: true, slug: true, coverImage: true, status: true, isFeatured: true, publishedAt: true, updatedAt: true,
-        category: { select: { name: true } },
-        author: { select: { name: true } },
-      },
+      orderBy: [desc(posts.updatedAt)],
+      limit: ADMIN_PAGE_SIZE,
+      offset: (page - 1) * ADMIN_PAGE_SIZE,
+      columns: { id: true, title: true, slug: true, coverImage: true, status: true, isFeatured: true, publishedAt: true, updatedAt: true },
+      with: { category: { columns: { name: true } }, author: { columns: { name: true } } },
     }),
-    prisma.post.count({ where }),
-    prisma.category.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
+    db.select({ total: count() }).from(posts).where(where),
+    db.query.categories.findMany({ columns: { id: true, name: true }, orderBy: [asc(categories.order), asc(categories.name)] }),
   ]);
   const totalPages = Math.ceil(total / ADMIN_PAGE_SIZE);
   const hasFilters = Boolean(q || status || category);
@@ -77,7 +74,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
           param="category"
           allLabel="Tất cả chuyên mục"
           placeholder="Chuyên mục"
-          options={[{ value: NONE_VALUE, label: "Chưa phân loại" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
+          options={[{ value: NONE_VALUE, label: "Chưa phân loại" }, ...categoryOptions.map((c) => ({ value: c.id, label: c.name }))]}
           className="w-full sm:w-52"
         />
         <UrlParamSelect
@@ -89,7 +86,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
         />
       </div>
 
-      {posts.length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState
           title={hasFilters ? "Không tìm thấy bài viết phù hợp" : "Chưa có bài viết nào"}
           description={hasFilters ? "Thử đổi từ khóa hoặc bỏ bộ lọc." : "Bắt đầu bằng cách viết bài đầu tiên cho mục Tin tức."}
@@ -111,7 +108,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Search
               </TableRow>
             </TableHeader>
             <TableBody>
-              {posts.map((post) => (
+              {rows.map((post) => (
                 <TableRow key={post.id}>
                   <TableCell>
                     {post.coverImage ? (

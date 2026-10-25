@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { asc } from "drizzle-orm";
+import { categories, db, tags } from "@/db";
 import { requireUser } from "@/lib/auth-guard";
 import { PageHeader } from "@/components/admin/page-header";
 import { PostForm } from "@/components/admin/posts/post-form";
@@ -11,9 +12,9 @@ export const metadata: Metadata = { title: "Viết bài mới" };
 
 export default async function NewPostPage() {
   const user = await requireUser();
-  const [categories, tags] = await Promise.all([
-    prisma.category.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
-    prisma.tag.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  const [categoryOptions, tagOptions] = await Promise.all([
+    db.query.categories.findMany({ columns: { id: true, name: true }, orderBy: [asc(categories.order), asc(categories.name)] }),
+    db.query.tags.findMany({ columns: { id: true, name: true }, orderBy: [asc(tags.name)] }),
   ]);
 
   return (
@@ -27,7 +28,7 @@ export default async function NewPostPage() {
           </Button>
         }
       />
-      <PostForm categories={categories} tags={tags} currentUserName={user.name} />
+      <PostForm categories={categoryOptions} tags={tagOptions} currentUserName={user.name} />
     </>
   );
 }

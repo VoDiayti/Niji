@@ -43,8 +43,6 @@ next-env.d.ts
 # keep the example env file
 !.env.example
 
-# prisma generated client
-/src/generated/
 
 
 # cloudflare / opennext
@@ -54,5 +52,4 @@ worker-configuration.d.ts
 .dev.vars
 
 # seed SQL sinh tự động
-/prisma/seed.sql
-/prisma/local-placeholder.db
+/db/seed.sql

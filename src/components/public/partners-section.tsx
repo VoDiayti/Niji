@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Building } from "lucide-react";
-import type { Partner } from "@/generated/prisma/client";
+import type { Partner } from "@/db/types";
 import { SectionHeading } from "@/components/public/section-heading";
 
 type PartnerData = Pick<Partner, "id" | "name" | "logo" | "website">;

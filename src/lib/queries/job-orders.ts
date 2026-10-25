@@ -1,11 +1,12 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
+import { and, asc, count, desc, eq, gte, inArray, isNull, like, lt, lte, ne, or, type SQL } from "drizzle-orm";
+import { db, jobOrders, markets } from "@/db";
+import type { JobOrder, Market } from "@/db/types";
 import { AGE_RANGES, PAGE_SIZE, SALARY_RANGES } from "@/lib/constants";
 import { slugify } from "@/lib/slug";
 
 /** Các trường cần cho card đơn hàng */
-export const jobCardSelect = {
+export const jobCardColumns = {
   id: true,
   title: true,
   slug: true,
@@ -21,12 +22,18 @@ export const jobCardSelect = {
   image: true,
   isFeatured: true,
   createdAt: true,
-  market: { select: { name: true, slug: true, countryCode: true } },
-} satisfies Prisma.JobOrderSelect;
+} as const;
 
-export type JobCardData = Prisma.JobOrderGetPayload<{ select: typeof jobCardSelect }>;
+const jobCardWith = { market: { columns: { name: true, slug: true, countryCode: true } } } as const;
 
-export type JobDetail = Prisma.JobOrderGetPayload<{ include: { market: true } }>;
+export type JobCardData = Pick<JobOrder, keyof typeof jobCardColumns> & {
+  market: Pick<Market, "name" | "slug" | "countryCode">;
+};
+
+export type JobDetail = JobOrder & { market: Market };
+
+const openJob = eq(jobOrders.status, "OPEN");
+const jobOrder = [desc(jobOrders.isFeatured), desc(jobOrders.createdAt)];
 
 /** Đơn hàng đã quá hạn nộp hồ sơ? (vẫn hiển thị khi status = OPEN, chỉ gắn nhãn) */
 export function isDeadlinePassed(deadline: Date | null | undefined): boolean {
@@ -45,111 +52,113 @@ export type JobFilters = {
   page?: number;
 };
 
-/** Chuyển tham số lọc thành điều kiện Prisma */
-export function buildJobWhere(f: JobFilters): Prisma.JobOrderWhereInput {
-  const and: Prisma.JobOrderWhereInput[] = [{ status: "OPEN" }];
+/** Chuyển tham số lọc thành điều kiện SQL (Drizzle) */
+export function buildJobWhere(f: JobFilters): SQL | undefined {
+  const conditions: (SQL | undefined)[] = [openJob];
 
-  if (f.market) and.push({ market: { slug: f.market, isActive: true } });
-  if (f.industry) and.push({ industry: f.industry });
+  if (f.market) {
+    conditions.push(
+      inArray(
+        jobOrders.marketId,
+        db.select({ id: markets.id }).from(markets).where(and(eq(markets.slug, f.market), eq(markets.isActive, true)))
+      )
+    );
+  }
+  if (f.industry) conditions.push(eq(jobOrders.industry, f.industry));
 
   if (f.gender === "MALE" || f.gender === "FEMALE") {
     // Lao động nam xem được đơn tuyển nam và đơn tuyển cả nam/nữ
-    and.push({ gender: { in: [f.gender, "ANY"] } });
+    conditions.push(inArray(jobOrders.gender, [f.gender, "ANY"]));
   } else if (f.gender === "ANY") {
-    and.push({ gender: "ANY" });
+    conditions.push(eq(jobOrders.gender, "ANY"));
   }
 
   const age = AGE_RANGES.find((r) => r.value === f.age);
   if (age) {
-    and.push({ OR: [{ ageMin: null }, { ageMin: { lte: age.max } }] });
-    and.push({ OR: [{ ageMax: null }, { ageMax: { gte: age.min } }] });
+    conditions.push(or(isNull(jobOrders.ageMin), lte(jobOrders.ageMin, age.max)));
+    conditions.push(or(isNull(jobOrders.ageMax), gte(jobOrders.ageMax, age.min)));
   }
 
   const salary = SALARY_RANGES.find((r) => r.value === f.salary);
   if (salary) {
-    and.push({ salaryVnd: { gte: salary.min, lt: salary.max } });
+    conditions.push(gte(jobOrders.salaryVnd, salary.min), lt(jobOrders.salaryVnd, salary.max));
   }
 
   const q = f.q?.trim();
   if (q) {
-    const or: Prisma.JobOrderWhereInput[] = [
-      { title: { contains: q } },
-      { industry: { contains: q } },
-      { location: { contains: q } },
+    const pattern = `%${q}%`;
+    const terms: (SQL | undefined)[] = [
+      like(jobOrders.title, pattern),
+      like(jobOrders.industry, pattern),
+      like(jobOrders.location, pattern),
     ];
     // Tìm theo slug để khớp cả khi người dùng gõ không dấu ("nhat ban" → "nhat-ban")
     const s = slugify(q);
-    if (s) or.push({ slug: { contains: s } });
-    and.push({ OR: or });
+    if (s) terms.push(like(jobOrders.slug, `%${s}%`));
+    conditions.push(or(...terms));
   }
 
-  return { AND: and };
+  return and(...conditions);
 }
 
 /** Danh sách đơn hàng có lọc + phân trang */
 export async function searchJobs(f: JobFilters) {
   const where = buildJobWhere(f);
   const page = Math.max(1, Math.floor(f.page ?? 1));
-  const [items, total] = await prisma.$transaction([
-    prisma.jobOrder.findMany({
+  const [items, [{ total }]] = await Promise.all([
+    db.query.jobOrders.findMany({
       where,
-      select: jobCardSelect,
-      orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      columns: jobCardColumns,
+      with: jobCardWith,
+      orderBy: jobOrder,
+      offset: (page - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE,
     }),
-    prisma.jobOrder.count({ where }),
+    db.select({ total: count() }).from(jobOrders).where(where),
   ]);
   return { items, total, page, totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 }
 
 /** Đơn hàng mới nhất cho trang chủ */
 export async function getLatestJobs(limit = 6) {
-  return prisma.jobOrder.findMany({
-    where: { status: "OPEN" },
-    select: jobCardSelect,
-    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-    take: limit,
-  });
+  return db.query.jobOrders.findMany({ where: openJob, columns: jobCardColumns, with: jobCardWith, orderBy: jobOrder, limit });
 }
 
 /** Đơn hàng đang tuyển thuộc một thị trường */
 export async function getJobsByMarket(marketId: string, limit = 6) {
-  return prisma.jobOrder.findMany({
-    where: { status: "OPEN", marketId },
-    select: jobCardSelect,
-    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-    take: limit,
+  return db.query.jobOrders.findMany({
+    where: and(openJob, eq(jobOrders.marketId, marketId)),
+    columns: jobCardColumns,
+    with: jobCardWith,
+    orderBy: jobOrder,
+    limit,
   });
 }
 
 /** Chi tiết đơn hàng (chỉ đơn đang tuyển) */
 export async function getJobBySlug(slug: string): Promise<JobDetail | null> {
-  return prisma.jobOrder.findFirst({ where: { slug, status: "OPEN" }, include: { market: true } });
+  const job = await db.query.jobOrders.findFirst({ where: and(eq(jobOrders.slug, slug), openJob), with: { market: true } });
+  return job ?? null;
 }
 
 /** Đơn hàng liên quan cùng thị trường */
 export async function getRelatedJobs(marketId: string, excludeId: string, limit = 3) {
-  return prisma.jobOrder.findMany({
-    where: { status: "OPEN", marketId, id: { not: excludeId } },
-    select: jobCardSelect,
-    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-    take: limit,
+  return db.query.jobOrders.findMany({
+    where: and(openJob, eq(jobOrders.marketId, marketId), ne(jobOrders.id, excludeId)),
+    columns: jobCardColumns,
+    with: jobCardWith,
+    orderBy: jobOrder,
+    limit,
   });
 }
 
 /** Danh sách ngành nghề (distinct) của các đơn đang tuyển – dùng cho bộ lọc */
 export async function getJobIndustries(): Promise<string[]> {
-  const rows = await prisma.jobOrder.findMany({
-    where: { status: "OPEN" },
-    distinct: ["industry"],
-    select: { industry: true },
-    orderBy: { industry: "asc" },
-  });
+  const rows = await db.selectDistinct({ industry: jobOrders.industry }).from(jobOrders).where(openJob).orderBy(asc(jobOrders.industry));
   return rows.map((r) => r.industry).filter(Boolean);
 }
 
 /** Dùng cho sitemap */
 export async function getJobSlugs() {
-  return prisma.jobOrder.findMany({ where: { status: "OPEN" }, select: { slug: true, updatedAt: true } });
+  return db.query.jobOrders.findMany({ where: openJob, columns: { slug: true, updatedAt: true } });
 }

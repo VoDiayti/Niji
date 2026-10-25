@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { asc, eq } from "drizzle-orm";
+import { categories, db, posts, tags } from "@/db";
 import { PageHeader } from "@/components/admin/page-header";
 import { PostStatusBadge } from "@/components/admin/status-badge";
 import { PostForm, type PostFormInitialData } from "@/components/admin/posts/post-form";
@@ -12,13 +13,13 @@ export const metadata: Metadata = { title: "Chỉnh sửa bài viết" };
 
 export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [post, categories, tags] = await Promise.all([
-    prisma.post.findUnique({
-      where: { id },
-      include: { tags: { select: { id: true } }, author: { select: { name: true } } },
+  const [post, categoryOptions, tagOptions] = await Promise.all([
+    db.query.posts.findFirst({
+      where: eq(posts.id, id),
+      with: { postTags: { columns: { tagId: true } }, author: { columns: { name: true } } },
     }),
-    prisma.category.findMany({ orderBy: [{ order: "asc" }, { name: "asc" }], select: { id: true, name: true } }),
-    prisma.tag.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    db.query.categories.findMany({ columns: { id: true, name: true }, orderBy: [asc(categories.order), asc(categories.name)] }),
+    db.query.tags.findMany({ columns: { id: true, name: true }, orderBy: [asc(tags.name)] }),
   ]);
   if (!post) notFound();
 
@@ -36,7 +37,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
     metaDescription: post.metaDescription,
     ogImage: post.ogImage,
     categoryId: post.categoryId,
-    tagIds: post.tags.map((t) => t.id),
+    tagIds: post.postTags.map((pt) => pt.tagId),
     authorName: post.author?.name ?? null,
     updatedAt: post.updatedAt.toISOString(),
   };
@@ -55,7 +56,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
           </>
         }
       />
-      <PostForm initialData={initialData} categories={categories} tags={tags} />
+      <PostForm initialData={initialData} categories={categoryOptions} tags={tagOptions} />
     </>
   );
 }

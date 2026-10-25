@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/public/post-card";
 import { cn } from "@/lib/utils";
 
-type Category = { id: string; name: string; slug: string; _count: { posts: number } };
+type Category = { id: string; name: string; slug: string; postCount: number };
 
 type NewsSidebarProps = {
   categories: Category[];
@@ -51,7 +51,7 @@ export function NewsSidebar({ categories, featured, activeCategorySlug, query, h
                   className={cn("flex items-center justify-between py-2.5 text-sm hover:text-primary", activeCategorySlug === c.slug && "font-semibold text-primary")}
                 >
                   <span>{c.name}</span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{c._count.posts}</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{c.postCount}</span>
                 </Link>
               </li>
             ))}
