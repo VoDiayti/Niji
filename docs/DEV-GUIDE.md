@@ -69,7 +69,7 @@ src/components/admin/*        page-header, submit-button, confirm-delete-button,
                               url-filters (SearchInput, UrlParamSelect), status-badge, empty-state,
                               image-upload-field, sidebar, header, nav.ts, login-form + thư mục theo module
 src/components/public/*       component trang công khai
-public/images/*.jpg           24 ảnh minh họa dùng trong seed, public/logo.svg, logo-full.svg, og-default.jpg
+public/images/*.jpg           24 ảnh minh họa dùng trong seed, public/logo.svg (logo tròn Niji), og-default.jpg
 public/_headers               Cache dài hạn cho /_next/static
 ```
 

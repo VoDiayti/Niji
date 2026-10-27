@@ -49,7 +49,7 @@ async function main() {
       companyName: "Công ty TNHH Nhân lực Quốc tế NIJI",
       shortName: "NIJI",
       slogan: "Vững bước tương lai – Vươn tầm quốc tế",
-      logo: "/logo-full.svg",
+      logo: "/logo.svg",
       licenseNumber: "1234/LĐTBXH-GP",
       licenseIssuer: "Cục Quản lý lao động ngoài nước",
       taxCode: "0100000000",

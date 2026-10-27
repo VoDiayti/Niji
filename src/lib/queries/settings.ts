@@ -10,7 +10,7 @@ export const DEFAULT_SETTINGS: Setting = {
   companyName: "Công ty Xuất khẩu Lao động",
   shortName: "XKLĐ",
   slogan: "Vững bước tương lai – Vươn tầm quốc tế",
-  logo: "/logo-full.svg",
+  logo: "/logo.svg",
   licenseNumber: null,
   licenseIssuer: null,
   taxCode: null,

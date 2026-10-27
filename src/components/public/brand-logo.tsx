@@ -18,9 +18,15 @@ export function BrandLogo({ logo, companyName, shortName, showName = true, tone 
   return (
     <Link href="/" onClick={onClick} className={cn("flex items-center gap-3", className)} aria-label={`${shortName || companyName} – Trang chủ`}>
       {logo ? (
-        <span className="relative block h-10 w-32 shrink-0 sm:h-11 sm:w-36 2xl:w-40">
-          <Image src={logo} alt={shortName || companyName} fill sizes="160px" priority className="object-contain object-left" />
-        </span>
+        // Cao cố định, rộng theo tỉ lệ ảnh (logo tròn hay logo ngang đều không bị chừa khoảng trống)
+        <Image
+          src={logo}
+          alt={shortName || companyName}
+          width={160}
+          height={160}
+          priority
+          className="h-10 w-auto max-w-32 shrink-0 object-contain object-left sm:h-11 sm:max-w-36 2xl:max-w-40"
+        />
       ) : (
         <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-lg font-extrabold text-primary-foreground">
           {(shortName || companyName).slice(0, 2).toUpperCase()}

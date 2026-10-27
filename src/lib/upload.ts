@@ -21,6 +21,8 @@ const EXTENSIONS: Record<string, string> = {
 };
 const MAX_MB = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 8);
 export const MAX_UPLOAD_BYTES = MAX_MB * 1024 * 1024;
+/** Thư mục gốc chứa ảnh upload trong bucket R2: Niji/<năm>/<tháng>/<tên-file> */
+const KEY_PREFIX = "Niji";
 
 function randomSuffix(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(4));
@@ -51,7 +53,7 @@ export async function storeImage(
 
   const base = slugify(file.name.replace(/\.[^.]+$/, "")).slice(0, 60) || "anh";
   const now = new Date();
-  const key = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${base}-${randomSuffix()}.${ext}`;
+  const key = `${KEY_PREFIX}/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${base}-${randomSuffix()}.${ext}`;
   const alt = opts.alt?.trim() || base.replace(/-/g, " ");
 
   const stored = await putObject(key, body, file.type, { alt });
