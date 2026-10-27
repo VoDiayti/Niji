@@ -33,7 +33,7 @@ export function BrandLogo({ logo, companyName, shortName, showName = true, tone 
         </span>
       )}
       {showName && (
-        <span className={cn("hidden w-44 max-w-[14rem] text-xs font-semibold leading-snug md:block xl:hidden", tone === "light" ? "text-white/90" : "text-brand-dark")}>
+        <span className={cn("hidden w-44 max-w-[14rem] text-xs font-semibold leading-snug md:block lg:hidden", tone === "light" ? "text-white/90" : "text-brand-dark")}>
           {companyName}
         </span>
       )}

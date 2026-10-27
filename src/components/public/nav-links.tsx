@@ -34,7 +34,7 @@ export function NavLinks({
               aria-current={active ? "page" : undefined}
               className={cn(
                 orientation === "horizontal"
-                  ? "relative inline-flex h-10 items-center whitespace-nowrap rounded-md px-2.5 text-sm font-medium transition-colors hover:bg-brand-light hover:text-primary after:absolute after:inset-x-3 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-cta after:opacity-0 after:transition-opacity 2xl:px-3 2xl:text-[15px]"
+                  ? "relative inline-flex h-10 items-center whitespace-nowrap rounded-md px-2 text-sm xl:px-2.5 font-medium transition-colors hover:bg-brand-light hover:text-primary after:absolute after:inset-x-3 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-cta after:opacity-0 after:transition-opacity 2xl:px-3 2xl:text-[15px]"
                   : "flex min-h-12 items-center justify-between rounded-lg px-3 text-base font-medium transition-colors hover:bg-brand-light hover:text-primary",
                 active && (orientation === "horizontal" ? "text-primary after:opacity-100" : "bg-brand-light text-primary")
               )}

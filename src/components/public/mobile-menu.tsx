@@ -27,7 +27,7 @@ export function MobileMenu({ logo, companyName, shortName, hotline, social }: Mo
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon-lg" className="shrink-0 xl:hidden" aria-label="Mở menu">
+        <Button variant="outline" size="icon-lg" className="shrink-0 lg:hidden" aria-label="Mở menu">
           <Menu className="size-5" />
         </Button>
       </SheetTrigger>

@@ -55,16 +55,16 @@ export async function SiteHeader() {
         <div className="container-page flex h-16 items-center justify-between gap-3 md:h-[4.5rem]">
           <BrandLogo logo={s.logo} companyName={s.companyName} shortName={s.shortName} />
 
-          {/* Menu ngang chỉ hiện từ 1280px; dưới đó dùng menu di động để không bị tràn */}
-          <nav aria-label="Menu chính" className="hidden xl:block">
-            <NavLinks />
+          {/* Menu ngang hiện từ 1024px (1024–1279px thu gọn khoảng cách); dưới đó dùng menu di động để không bị tràn */}
+          <nav aria-label="Menu chính" className="hidden lg:block">
+            <NavLinks className="gap-0 xl:gap-1" />
           </nav>
 
           <div className="flex items-center gap-2">
-            {/* Hotline */}
+            {/* Hotline (1024–1179px không đủ chỗ cạnh menu ngang → dùng nút gọi nhanh bên dưới) */}
             <a
               href={telHref(s.hotline)}
-              className="hidden shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-primary/20 bg-brand-light py-1.5 pl-1.5 pr-4 text-primary transition-colors hover:bg-primary hover:text-primary-foreground md:flex"
+              className="hidden shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-primary/20 bg-brand-light py-1.5 pl-1.5 pr-4 text-primary transition-colors hover:bg-primary hover:text-primary-foreground md:flex lg:hidden min-[73.75rem]:flex"
             >
               <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 <Phone className="size-4" />
@@ -74,8 +74,8 @@ export async function SiteHeader() {
                 <span className="block text-sm font-bold">{s.hotline}</span>
               </span>
             </a>
-            {/* Gọi nhanh trên di động */}
-            <Button asChild variant="outline" size="icon-lg" className="shrink-0 border-primary/30 text-primary md:hidden" aria-label={`Gọi ${s.hotline}`}>
+            {/* Gọi nhanh: di động và 1024–1179px */}
+            <Button asChild variant="outline" size="icon-lg" className="shrink-0 border-primary/30 text-primary md:hidden lg:inline-flex min-[73.75rem]:hidden" aria-label={`Gọi ${s.hotline}`}>
               <a href={telHref(s.hotline)}>
                 <Phone className="size-5" />
               </a>

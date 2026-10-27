@@ -10,7 +10,8 @@ import type { JobTableGroup } from "@/lib/queries/job-programs";
 export function JobTableTabs({ groups }: { groups: JobTableGroup[] }) {
   return (
     <Tabs defaultValue={groups[0].slug} className="gap-0 overflow-hidden rounded-2xl border bg-card shadow-sm">
-      <div className="overflow-x-auto bg-brand-dark">
+      {/* Chỉ cuộn ngang; khoá trục dọc vì ::after của TabsTrigger (bottom -5px) làm dư chiều cao */}
+      <div className="overflow-x-auto overflow-y-hidden bg-brand-dark">
         <TabsList className="h-auto w-max min-w-full justify-start gap-0 rounded-none bg-transparent p-0">
           {groups.map((g) => (
             <TabsTrigger

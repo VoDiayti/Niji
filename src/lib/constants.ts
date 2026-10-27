@@ -66,7 +66,6 @@ export const PUBLIC_NAV = [
   { href: "/don-hang", label: "Đơn hàng" },
   { href: "/du-hoc-dao-tao", label: "Du học – Đào tạo" },
   { href: "/tin-tuc", label: "Tin tức" },
-  { href: "/cau-hoi-thuong-gap", label: "Hỏi đáp" },
   { href: "/lien-he", label: "Liên hệ" },
 ] as const;
 

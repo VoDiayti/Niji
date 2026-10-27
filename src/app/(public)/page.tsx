@@ -23,8 +23,12 @@ import { TestimonialsSection } from "@/components/public/testimonials-section";
 import { PartnersSection } from "@/components/public/partners-section";
 import { LeadForm } from "@/components/public/lead-form";
 import { PublicEmptyState } from "@/components/public/empty-state";
+import { YouTubeEmbed } from "@/components/public/youtube-embed";
 
 export const dynamic = "force-dynamic";
+
+/** Video giới thiệu công ty (https://www.youtube.com/watch?v=eaegwNEhW98) */
+const INTRO_VIDEO_ID = "eaegwNEhW98";
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettings();
@@ -151,6 +155,13 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Video giới thiệu: vắt ngang ranh giới nền trắng (Giới thiệu) và nền hồng (Thị trường), chia đúng giữa chiều cao video */}
+      <div className="bg-[linear-gradient(to_bottom,var(--background)_50%,var(--brand-light)_50%)]">
+        <div className="container-page">
+          <YouTubeEmbed videoId={INTRO_VIDEO_ID} title={`Video giới thiệu ${s.companyName}`} className="mx-auto max-w-md border-4 border-background shadow-2xl" />
+        </div>
+      </div>
 
       {/* Thị trường nổi bật */}
       <section className="bg-brand-light py-14 md:py-20">

@@ -74,6 +74,12 @@ export async function SiteFooter() {
                 </Link>
               </li>
             ))}
+            {/* Hỏi đáp không nằm trong menu chính nhưng vẫn giữ ở footer */}
+            <li>
+              <Link href="/cau-hoi-thuong-gap" className="inline-block py-0.5 transition-colors hover:text-amber-300">
+                Hỏi đáp
+              </Link>
+            </li>
             <li>
               <Link href="/dang-ky-tu-van" className="inline-block py-0.5 transition-colors hover:text-amber-300">
                 Đăng ký tư vấn
